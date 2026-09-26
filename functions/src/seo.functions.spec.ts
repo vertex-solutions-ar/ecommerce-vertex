@@ -107,6 +107,16 @@ describe('SEO Cloud Functions', () => {
       expect(isSvgUrl('https://example.com/vector.svg?v=2&cache=false')).toBe(true);
     });
 
+    it('should detect Firebase Storage SVG URLs with complex query parameters and tokens', () => {
+      const storageSvgUrl =
+        'https://firebasestorage.googleapis.com/v0/b/ecommerce-vertex.appspot.com/o/stores%2Fsublicup%2Fbrand-logo.svg?alt=media&token=a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      expect(isSvgUrl(storageSvgUrl)).toBe(true);
+
+      const storageSvgUrlWithParams =
+        'https://firebasestorage.googleapis.com/v0/b/app.appspot.com/o/store%2Flogo.SVG?alt=media&token=xyz&v=3';
+      expect(isSvgUrl(storageSvgUrlWithParams)).toBe(true);
+    });
+
     it('should be case-insensitive for SVG extension', () => {
       expect(isSvgUrl('https://storage.googleapis.com/logo.SVG')).toBe(true);
       expect(isSvgUrl('https://storage.googleapis.com/logo.Svg?token=xyz')).toBe(true);
@@ -120,6 +130,20 @@ describe('SEO Cloud Functions', () => {
       expect(
         isSvgUrl('https://storage.googleapis.com/logo.png?alt=media&token=123'),
       ).toBe(false);
+    });
+
+    it('should recognize raster URLs with Firebase Storage query parameters as false', () => {
+      const storagePngUrl =
+        'https://firebasestorage.googleapis.com/v0/b/ecommerce-vertex.appspot.com/o/stores%2Fsublicup%2Flogo.png?alt=media&token=123456';
+      expect(isSvgUrl(storagePngUrl)).toBe(false);
+
+      const storageWebpUrl =
+        'https://firebasestorage.googleapis.com/v0/b/ecommerce-vertex.appspot.com/o/stores%2Fsublicup%2Fbanner.webp?alt=media&token=789012';
+      expect(isSvgUrl(storageWebpUrl)).toBe(false);
+
+      const storageJpgUrl =
+        'https://firebasestorage.googleapis.com/v0/b/ecommerce-vertex.appspot.com/o/stores%2Fsublicup%2Fhero.jpg?alt=media&token=345678';
+      expect(isSvgUrl(storageJpgUrl)).toBe(false);
     });
 
     it('should return false for empty or non-string inputs', () => {
@@ -237,6 +261,69 @@ describe('SEO Cloud Functions', () => {
       expect(
         resolveStoreIdFromRequest({
           headers: {},
+        }),
+      ).toBe('white-label-store');
+    });
+
+    it('should resolve sublicup from hostname vtx-sublicup.web.app', () => {
+      expect(
+        resolveStoreIdFromRequest({
+          headers: { 'x-forwarded-host': 'vtx-sublicup.web.app' },
+        }),
+      ).toBe('sublicup');
+
+      expect(
+        resolveStoreIdFromRequest({
+          headers: {},
+          hostname: 'vtx-sublicup.web.app',
+        }),
+      ).toBe('sublicup');
+    });
+
+    it('should resolve sublicup from query parameter ?tenantId=vtx-sublicup and ?storeId=vtx-sublicup', () => {
+      expect(
+        resolveStoreIdFromRequest({
+          headers: {},
+          query: { tenantId: 'vtx-sublicup' },
+        }),
+      ).toBe('sublicup');
+
+      expect(
+        resolveStoreIdFromRequest({
+          headers: { 'x-forwarded-host': 'ecommerce-vertex.web.app' },
+          query: { tenantId: '  vtx-sublicup  ' },
+        }),
+      ).toBe('sublicup');
+
+      expect(
+        resolveStoreIdFromRequest({
+          headers: {},
+          query: { storeId: 'vtx-sublicup' },
+        }),
+      ).toBe('sublicup');
+    });
+
+    it('should strip -vtx suffix from query parameter', () => {
+      expect(
+        resolveStoreIdFromRequest({
+          headers: {},
+          query: { tenantId: 'sublicup-vtx' },
+        }),
+      ).toBe('sublicup');
+    });
+
+    it('should fallback to white-label-store for platform query parameters', () => {
+      expect(
+        resolveStoreIdFromRequest({
+          headers: {},
+          query: { tenantId: 'ecommerce-vertex' },
+        }),
+      ).toBe('white-label-store');
+
+      expect(
+        resolveStoreIdFromRequest({
+          headers: {},
+          query: { tenantId: 'vtx-ecommerce-vertex' },
         }),
       ).toBe('white-label-store');
     });
@@ -551,6 +638,80 @@ describe('SEO Cloud Functions', () => {
       );
       expect(responseBody).toContain(
         `<meta property="og:title" content="${DEFAULT_STORE_NAME}" />`,
+      );
+    });
+
+    it('should resolve tenant sublicup from vtx-sublicup.web.app, fetch store_sublicup, and extract StoreConfig fields', async () => {
+      mockReq = {
+        headers: {
+          'user-agent': 'WhatsApp/2.21.12.21 A',
+          'x-forwarded-host': 'vtx-sublicup.web.app',
+          'x-forwarded-proto': 'https',
+        },
+        hostname: 'vtx-sublicup.web.app',
+        originalUrl: '/',
+      };
+
+      const storagePng =
+        'https://firebasestorage.googleapis.com/v0/b/ecommerce-vertex.appspot.com/o/stores%2Fsublicup%2Flogo.png?alt=media&token=abc-123';
+
+      mockDocGet.mockResolvedValueOnce({
+        exists: true,
+        data: () => ({
+          storeName: 'Sublicup Sublimaciones',
+          tagline: 'Tazas personalizadas y merchandising',
+          logoUrl: storagePng,
+        }),
+      });
+
+      await (storefrontSeo as any)(mockReq, mockRes);
+
+      expect(responseStatus).toBe(200);
+      expect(mockDbDoc).toHaveBeenCalledWith('configuracion/store_sublicup');
+      expect(responseBody).toContain(
+        '<meta property="og:title" content="Sublicup Sublimaciones" />',
+      );
+      expect(responseBody).toContain(
+        '<meta property="og:description" content="Tazas personalizadas y merchandising" />',
+      );
+      expect(responseBody).toContain(
+        `<meta property="og:image" content="${escapeHtml(storagePng)}" />`,
+      );
+      expect(responseBody).toContain(
+        '<meta property="og:url" content="https://vtx-sublicup.web.app/" />',
+      );
+    });
+
+    it('should respect StoreConfig fallback fields: name fallback and seo.metaDescription fallback', async () => {
+      mockReq = {
+        headers: {
+          'user-agent': 'facebookexternalhit/1.1',
+          'x-forwarded-host': 'ecommerce-vertex.web.app',
+        },
+        hostname: 'ecommerce-vertex.web.app',
+        query: { tenantId: 'vtx-sublicup' },
+        originalUrl: '/catalogo',
+      };
+
+      mockDocGet.mockResolvedValueOnce({
+        exists: true,
+        data: () => ({
+          name: 'Sublicup Legacy Name',
+          seo: {
+            metaDescription: 'Descripción desde seo.metaDescription',
+          },
+        }),
+      });
+
+      await (storefrontSeo as any)(mockReq, mockRes);
+
+      expect(responseStatus).toBe(200);
+      expect(mockDbDoc).toHaveBeenCalledWith('configuracion/store_sublicup');
+      expect(responseBody).toContain(
+        '<meta property="og:title" content="Sublicup Legacy Name" />',
+      );
+      expect(responseBody).toContain(
+        '<meta property="og:description" content="Descripción desde seo.metaDescription" />',
       );
     });
   });
