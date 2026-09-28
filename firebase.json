@@ -10,7 +10,13 @@
     {
       "target": "ecommerce-vertex",
       "public": "dist/ecommerce-vertex/browser",
-      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**",
+        "index.html",
+        "**/index.html"
+      ],
       "headers": [
         {
           "source": "**",

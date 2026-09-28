@@ -50,9 +50,23 @@ export function escapeHtml(str: string): string {
  */
 export function isSvgUrl(url?: string): boolean {
   if (!url || typeof url !== 'string') return false;
-  const clean = url.trim().toLowerCase();
-  const pathWithoutQuery = clean.split('?')[0].split('#')[0];
-  return pathWithoutQuery.endsWith('.svg');
+  const clean = url.trim();
+  if (!clean) return false;
+
+  try {
+    const parsed = new URL(clean, 'https://dummy.base');
+    const pathname = parsed.pathname.toLowerCase();
+    if (pathname.endsWith('.svg')) return true;
+    try {
+      if (decodeURIComponent(pathname).endsWith('.svg')) return true;
+    } catch {
+      // Ignore decoding errors
+    }
+    return false;
+  } catch {
+    const pathWithoutQuery = clean.split('?')[0].split('#')[0].toLowerCase();
+    return pathWithoutQuery.endsWith('.svg');
+  }
 }
 
 /**
@@ -114,10 +128,27 @@ export function isCrawlerBot(userAgent?: string): boolean {
  */
 export function resolveStoreIdFromRequest(req: RequestLike): string {
   // 1. Explicit query param override (useful for non-prod testing and verification)
-  const queryTenant =
+  const rawQuery =
     (req.query?.['storeId'] as string) || (req.query?.['tenantId'] as string);
-  if (queryTenant && typeof queryTenant === 'string' && queryTenant.trim()) {
-    return queryTenant.trim();
+  if (rawQuery && typeof rawQuery === 'string' && rawQuery.trim()) {
+    let cleanQuery = rawQuery.trim();
+    if (cleanQuery.startsWith('vtx-') && cleanQuery.length > 4) {
+      cleanQuery = cleanQuery.substring(4);
+    } else if (cleanQuery.endsWith('-vtx') && cleanQuery.length > 4) {
+      cleanQuery = cleanQuery.slice(0, -4);
+    }
+
+    const lowerQuery = cleanQuery.toLowerCase();
+    if (
+      cleanQuery &&
+      lowerQuery !== 'ecommerce-vertex' &&
+      lowerQuery !== 'ecommerce-vertex-dev' &&
+      lowerQuery !== 'localhost' &&
+      lowerQuery !== '127.0.0.1'
+    ) {
+      return cleanQuery;
+    }
+    return DEFAULT_STORE_ID;
   }
 
   // 2. Parse host from headers (x-forwarded-host has priority behind reverse proxies / CDN)
@@ -145,25 +176,33 @@ export function resolveStoreIdFromRequest(req: RequestLike): string {
 
   const firstLabel = host.split('.')[0] ?? '';
 
+  let resolvedId = '';
+
   // Handle {slug}-vtx pattern (e.g., "tienda-a-vtx" → "tienda-a")
   if (firstLabel.endsWith('-vtx') && firstLabel.length > 4) {
-    return firstLabel.slice(0, -4);
-  }
-
-  // Strip vtx- prefix: Firebase Hosting siteIds for stores use "vtx-{slug}"
-  if (firstLabel.startsWith('vtx-') && firstLabel.length > 4) {
-    return firstLabel.substring(4);
-  }
-
-  if (
+    resolvedId = firstLabel.slice(0, -4);
+  } else if (
     firstLabel &&
     firstLabel !== 'ecommerce-vertex' &&
     firstLabel !== 'ecommerce-vertex-dev'
   ) {
-    return firstLabel;
+    // Strip vtx- prefix: Firebase Hosting siteIds for stores use the pattern
+    // "vtx-{slug}" but the actual tenantId in Firestore/admin_roles is "{slug}".
+    // This mirrors the server-side strip in role.functions.ts resolveTenantId().
+    resolvedId = firstLabel.startsWith('vtx-') ? firstLabel.substring(4) : firstLabel;
   }
 
-  return DEFAULT_STORE_ID;
+  if (
+    !resolvedId ||
+    resolvedId === 'ecommerce-vertex' ||
+    resolvedId === 'ecommerce-vertex-dev' ||
+    resolvedId === 'localhost' ||
+    resolvedId === '127.0.0.1'
+  ) {
+    return DEFAULT_STORE_ID;
+  }
+
+  return resolvedId;
 }
 
 const DEFAULT_BASE_HTML = `<!doctype html>
@@ -336,19 +375,20 @@ export const storefrontSeo = onRequest(
 
         if (snap.exists) {
           const data = snap.data() || {};
+          const rawName = data['storeName'] || data['name'];
           storeName =
-            String(data['storeName'] || data['name'] || '').trim() || DEFAULT_STORE_NAME;
+            typeof rawName === 'string' && rawName.trim()
+              ? rawName.trim()
+              : DEFAULT_STORE_NAME;
 
           const rawDesc =
-            String(
-              data['tagline'] ||
-                data['seo']?.['metaDescription'] ||
-                data['metaDescription'] ||
-                '',
-            ).trim();
-          if (rawDesc) {
-            description = rawDesc;
-          }
+            data['tagline'] ||
+            data['seo']?.['metaDescription'] ||
+            data['metaDescription'];
+          description =
+            typeof rawDesc === 'string' && rawDesc.trim()
+              ? rawDesc.trim()
+              : DEFAULT_META_DESCRIPTION;
 
           // Strict raster image fallback cascade for WhatsApp & Facebook (SVGs strictly rejected)
           const rawLogo =
