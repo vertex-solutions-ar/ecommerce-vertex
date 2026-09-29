@@ -53,6 +53,7 @@ export class Home implements OnInit {
         next: (data) => this.newArrivals.set(data),
         error: () => this.newArrivals.set([]),
       });
+    console.log('*** ESTA ES LA VERSION QUE QUEREMOS PROBAR');
   }
 
   isCarousel(banner: HeroBanner | null | undefined): boolean {
