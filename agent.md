@@ -187,6 +187,15 @@ Versión actual: `0.8.0`
 - Al editar el precio base de un producto en el panel de administración, la actualización se propaga de forma atómica a todas sus variantes para mantener la consistencia de precios en la subcolección de variantes de Firestore y en `createPaymentPreference`.
 - El storefront habilita directamente la compra y el carrito muestra el nombre limpio del producto.
 
+### 4. Slider de Productos Destacados (Featured Continuous Marquee)
+- **Storefront**: Componente `FeaturedSlider` (`app-featured-slider`) en `src/app/features/shop/components/home/components/featured-slider/`.
+  - Marquee infinito continuo acelerado por GPU (`transform: translate3d(...)`) con pausa en `:hover` y `:focus-within`.
+  - Dimensiones responsive: 2 ítems por viewport en mobile y 5 ítems en desktop.
+  - Integrado en `home.html` inmediatamente debajo del hero/banner y antes de las categorías destacadas.
+- **Admin**: Gestión en `HomeManagement` con subcomponente `FeaturedProducts` (`app-featured-products`).
+  - Habilitación/deshabilitación, título configurable y selección entre 5 y 15 productos con validación estricta (`featuredProductsSectionValidator`) y contador reactivo en tiempo real.
+  - Foco accesible (`autofocus`) preservado al abrir y cerrar selectores y modales de producto.
+
 ---
 
 ## ⚠️ Errores comunes y soluciones

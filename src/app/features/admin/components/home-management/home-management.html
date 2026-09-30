@@ -211,6 +211,13 @@
           ></app-featured-categories>
         </div>
 
+        <div class="position-relative">
+          <app-featured-products
+            [formGroup]="featuredProductsGroup"
+            [allProducts]="(products$ | async) ?? []"
+          ></app-featured-products>
+        </div>
+
         <div class="d-flex justify-content-center justify-content-md-end mb-5 pb-4">
           <button
             type="submit"

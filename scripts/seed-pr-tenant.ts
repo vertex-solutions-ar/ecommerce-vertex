@@ -131,6 +131,7 @@ function generateVariantCombinations(
   }
 
   // 3. Seed Products
+  const seededProductIds: string[] = [];
   for (const catGroup of PRODUCT_CATALOGUE) {
     const catInfo = catMap[catGroup.slug];
     if (!catInfo) continue;
@@ -216,6 +217,7 @@ function generateVariantCombinations(
         });
         await productRef.set({ totalStock: baseStock, inStockAttributes: {} }, { merge: true });
       }
+      seededProductIds.push(productRef.id);
     }
   }
 
@@ -239,6 +241,11 @@ function generateVariantCombinations(
       { categoryId: catMap['camperas']?.id ?? '', name: 'Camperas', slug: 'camperas', imageUrl: u('1551537482-f2075a1d41f2', 600, 400) },
       { categoryId: catMap['zapatillas']?.id ?? '', name: 'Zapatillas', slug: 'zapatillas', imageUrl: u('1491553895911-0055eca6402d', 600, 400) },
     ],
+    featuredProducts: {
+      enabled: true,
+      title: 'Destacados',
+      productIds: seededProductIds.slice(0, 8),
+    },
     lastUpdated: new Date(),
   });
 
