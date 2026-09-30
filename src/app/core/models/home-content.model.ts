@@ -16,16 +16,24 @@ export interface HeroImage {
   linkId?: string;
 }
 
-export interface HeroBanner {
+export interface FeaturedProductsSection {
+  enabled: boolean;
+  title: string;
+  productIds: string[];
+}
+
+export interface HomeContent {
   id?: string;
   imageUrl?: string;
-
   heroImages?: HeroImage[];
-
   carouselSettings?: CarouselSettings;
   title?: string;
   buttonText?: string;
   buttonLink?: string;
   featuredCategories?: FeaturedCategory[];
+  featuredProducts?: FeaturedProductsSection;
   lastUpdated?: Date;
+  storeId?: string;
 }
+
+export interface HeroBanner extends HomeContent {}

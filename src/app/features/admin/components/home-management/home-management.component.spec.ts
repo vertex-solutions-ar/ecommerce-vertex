@@ -33,6 +33,11 @@ describe('HomeManagement', () => {
     featuredCategories: [
       { categoryId: 'cat-1', name: 'Ropa', slug: 'ropa', imageUrl: 'https://example.com/cat.jpg' },
     ],
+    featuredProducts: {
+      enabled: true,
+      title: 'Destacados Especiales',
+      productIds: ['prod-1', 'prod-2', 'prod-3', 'prod-4', 'prod-5'],
+    },
   };
 
   beforeEach(async () => {
@@ -72,6 +77,9 @@ describe('HomeManagement', () => {
     expect(component.isLoading()).toBeFalse();
     expect(component.heroImages.length).toBe(1);
     expect(component.featuredCategories.length).toBe(1);
+    expect(component.featuredProductsGroup.value.enabled).toBeTrue();
+    expect(component.featuredProductsGroup.value.title).toBe('Destacados Especiales');
+    expect(component.featuredProductsGroup.value.productIds.length).toBe(5);
   });
 
   it('should handle drag and drop events', () => {
@@ -190,4 +198,62 @@ describe('HomeManagement', () => {
 
     expect(sweetAlertServiceSpy.error).toHaveBeenCalledWith('Error', jasmine.any(String));
   }));
+
+  describe('featured products section validation', () => {
+    it('should show error on submit if featured products enabled with fewer than 5 products', fakeAsync(() => {
+      component.heroImages = [{ imageUrl: 'img1.jpg', linkType: 'none' }];
+      component.featuredProductsGroup.patchValue({
+        enabled: true,
+        title: 'Destacados',
+        productIds: ['prod-1', 'prod-2'],
+      });
+      component.featuredProductsGroup.updateValueAndValidity();
+
+      void component.onSubmit();
+      tick();
+
+      expect(sweetAlertServiceSpy.error).toHaveBeenCalledWith(
+        'Productos insuficientes',
+        jasmine.any(String),
+      );
+      expect(homeContentServiceSpy.saveHomePageContent).not.toHaveBeenCalled();
+    }));
+
+    it('should show error on submit if featured products enabled with more than 15 products', fakeAsync(() => {
+      component.heroImages = [{ imageUrl: 'img1.jpg', linkType: 'none' }];
+      const sixteenProducts = Array.from({ length: 16 }, (_, i) => `prod-${i}`);
+      component.featuredProductsGroup.patchValue({
+        enabled: true,
+        title: 'Destacados',
+        productIds: sixteenProducts,
+      });
+      component.featuredProductsGroup.updateValueAndValidity();
+
+      void component.onSubmit();
+      tick();
+
+      expect(sweetAlertServiceSpy.error).toHaveBeenCalledWith(
+        'Límite de productos excedido',
+        jasmine.any(String),
+      );
+      expect(homeContentServiceSpy.saveHomePageContent).not.toHaveBeenCalled();
+    }));
+
+    it('should allow submit when featured products is disabled even if productIds is empty', fakeAsync(() => {
+      homeContentServiceSpy.saveHomePageContent.and.returnValue(Promise.resolve());
+      component.heroImages = [{ imageUrl: 'img1.jpg', linkType: 'none' }];
+      component.featuredProductsGroup.patchValue({
+        enabled: false,
+        title: '',
+        productIds: [],
+      });
+      component.featuredProductsGroup.updateValueAndValidity();
+
+      void component.onSubmit();
+      tick();
+
+      expect(homeContentServiceSpy.saveHomePageContent).toHaveBeenCalled();
+      expect(sweetAlertServiceSpy.success).toHaveBeenCalled();
+    }));
+  });
 });

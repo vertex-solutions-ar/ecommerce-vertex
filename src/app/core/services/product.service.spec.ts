@@ -93,6 +93,36 @@ describe('ProductService', () => {
     });
   });
 
+  describe('getProductsByIds', () => {
+    it('should return empty array if ids is empty or null', (done) => {
+      service.getProductsByIds([]).subscribe((products) => {
+        expect(products).toEqual([]);
+        done();
+      });
+    });
+
+    it('should return matching products in the order requested', (done) => {
+      spyOn(service, 'getProducts').and.returnValue(of(mockProducts));
+
+      service.getProductsByIds(['p2', 'p1']).subscribe((products) => {
+        expect(products.length).toBe(2);
+        expect(products[0].id).toBe('p2');
+        expect(products[1].id).toBe('p1');
+        done();
+      });
+    });
+
+    it('should ignore non-existent product IDs', (done) => {
+      spyOn(service, 'getProducts').and.returnValue(of(mockProducts));
+
+      service.getProductsByIds(['p1', 'non-existent']).subscribe((products) => {
+        expect(products.length).toBe(1);
+        expect(products[0].id).toBe('p1');
+        done();
+      });
+    });
+  });
+
   describe('getProductById', () => {
     it('should return product by ID if found', (done) => {
       spyOn(service, 'getProductById').and.callFake((id) =>

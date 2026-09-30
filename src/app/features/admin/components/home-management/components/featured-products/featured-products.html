@@ -1,0 +1,255 @@
+<div [formGroup]="formGroup()" class="glass-card mb-5 card-featured-products">
+  <div class="card-header border-0 d-flex justify-content-between align-items-center fw-bold">
+    <div><i class="bi bi-stars me-2 text-warning" aria-hidden="true"></i>Sección de Destacados</div>
+    <div class="form-check form-switch custom-switch m-0 d-flex align-items-center">
+      <input
+        class="form-check-input m-0 me-2"
+        type="checkbox"
+        id="featuredEnabledSwitch"
+        formControlName="enabled"
+        style="width: 2.75rem; height: 1.4rem"
+      />
+      <label class="form-check-label text-soft fw-medium small" for="featuredEnabledSwitch">
+        {{ formGroup().get('enabled')?.value ? 'Activada' : 'Desactivada' }}
+      </label>
+    </div>
+  </div>
+
+  <div class="card-body">
+    @if (formGroup().get('enabled')?.value) {
+      <div class="row g-4 mb-4">
+        <div class="col-12 col-md-8">
+          <label for="featuredTitleInput" class="form-label text-label">
+            Título de la Sección <span class="text-danger">*</span>
+          </label>
+          <input
+            id="featuredTitleInput"
+            type="text"
+            class="form-control glass-input"
+            formControlName="title"
+            placeholder="Ej: Destacados de la Semana"
+          />
+        </div>
+      </div>
+
+      <!-- Barra de Estado y Contador Reactivo -->
+      <div
+        class="counter-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3 p-3 rounded mb-4"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <span
+            class="counter-badge"
+            [class.counter-badge--valid]="isMinReached() && !isMaxReached()"
+            [class.counter-badge--warning]="!isMinReached()"
+            [class.counter-badge--max]="isMaxReached()"
+          >
+            <i
+              class="bi me-1"
+              [class.bi-check-circle-fill]="isMinReached() && !isMaxReached()"
+              [class.bi-exclamation-triangle-fill]="!isMinReached()"
+              [class.bi-info-circle-fill]="isMaxReached()"
+            ></i>
+            {{ productCount() }} / 15 productos
+          </span>
+
+          @if (!isMinReached()) {
+            <span class="text-warning small fw-medium">
+              (Se requieren entre 5 y 15 productos para el slider continuo)
+            </span>
+          } @else if (isMaxReached()) {
+            <span class="text-info small fw-medium">
+              (Límite máximo de 15 productos alcanzado)
+            </span>
+          } @else {
+            <span class="text-success small fw-medium">
+              (Cantidad óptima para el slider continuo)
+            </span>
+          }
+        </div>
+
+        <button
+          #addBtn
+          type="button"
+          class="btn-glass-action btn-add-success"
+          (click)="openModal()"
+          [disabled]="isMaxReached()"
+        >
+          <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Añadir Producto
+        </button>
+      </div>
+
+      @if (!isMinReached()) {
+        <div
+          class="alert alert-warning d-flex align-items-center py-2 px-3 mb-4 rounded-3"
+          role="alert"
+        >
+          <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+          <div>
+            Debes seleccionar al menos <strong>5 productos</strong> para habilitar el slider. Faltan
+            {{ 5 - productCount() }} producto(s).
+          </div>
+        </div>
+      }
+
+      <!-- Grilla de productos seleccionados -->
+      @if (selectedProductsList().length > 0) {
+        <div class="selected-products-grid">
+          @for (prod of selectedProductsList(); track prod.id; let i = $index) {
+            <div class="selected-product-card glass-inner-card">
+              <div class="thumb-container">
+                @if (prod.image) {
+                  <img [src]="prod.image" [alt]="prod.name" class="product-thumb" />
+                } @else {
+                  <div class="product-thumb-placeholder">
+                    <i class="bi bi-box-seam"></i>
+                  </div>
+                }
+                <span class="order-badge">{{ i + 1 }}</span>
+              </div>
+
+              <div class="product-details text-truncate">
+                <h6 class="product-name text-truncate text-white mb-1" [title]="prod.name">
+                  {{ prod.name }}
+                </h6>
+                <div class="product-meta small text-soft">
+                  <span class="font-monospace text-indigo">{{ prod.price | currency }}</span>
+                </div>
+              </div>
+
+              <div class="product-actions d-flex gap-1 shrink-0">
+                <button
+                  type="button"
+                  class="btn-action-icon"
+                  (click)="moveUp(i)"
+                  [disabled]="i === 0"
+                  title="Mover arriba"
+                >
+                  <i class="bi bi-chevron-up"></i>
+                </button>
+                <button
+                  type="button"
+                  class="btn-action-icon"
+                  (click)="moveDown(i)"
+                  [disabled]="i === selectedProductsList().length - 1"
+                  title="Mover abajo"
+                >
+                  <i class="bi bi-chevron-down"></i>
+                </button>
+                <button
+                  type="button"
+                  class="btn-action-icon btn-action-icon--delete"
+                  (click)="removeProduct(i)"
+                  title="Quitar de destacados"
+                >
+                  <i class="bi bi-trash3"></i>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty-state py-4 text-center">
+          <i class="bi bi-bag-plus empty-icon text-soft" style="font-size: 2.5rem"></i>
+          <p class="fs-6 mt-2 fw-bold text-soft mb-1">
+            No hay productos seleccionados para el slider.
+          </p>
+          <p class="small text-soft">
+            Haz clic en "Añadir Producto" para comenzar a configurar la sección.
+          </p>
+        </div>
+      }
+    } @else {
+      <div class="disabled-notice py-3 text-center text-soft">
+        <i class="bi bi-eye-slash me-2"></i>
+        La sección de productos destacados está actualmente desactivada en la tienda.
+      </div>
+    }
+  </div>
+</div>
+
+<!-- Modal Accesible de Selección de Productos -->
+@if (isModalOpen()) {
+  <div class="modal-backdrop glass-backdrop fade show"></div>
+  <div
+    class="modal fade show custom-glass-modal"
+    style="display: block"
+    tabindex="-1"
+    (click)="closeModal()"
+  >
+    <div class="modal-dialog modal-dialog-centered modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-content glass-modal-content">
+        <div class="modal-header border-0">
+          <h5 class="modal-title fw-bold text-white">
+            <i class="bi bi-plus-circle me-2 text-warning"></i> Añadir a Destacados
+          </h5>
+          <button type="button" class="btn-close btn-close-white" (click)="closeModal()"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="search-input-wrap position-relative mb-3">
+            <i
+              class="bi bi-search position-absolute text-soft"
+              style="top: 50%; left: 1rem; transform: translateY(-50%)"
+            ></i>
+            <input
+              #productSearchInput
+              autofocus
+              type="text"
+              class="form-control glass-input"
+              style="padding-left: 2.5rem"
+              placeholder="Buscar por nombre o ID de producto..."
+              [value]="searchTerm()"
+              (input)="onSearchInput($event)"
+            />
+          </div>
+
+          <div class="modal-products-list custom-scrollbar">
+            @for (prod of filteredAvailableProducts(); track prod.id) {
+              <div
+                class="modal-product-row d-flex align-items-center justify-content-between p-2 rounded cursor-pointer mb-2"
+                (click)="addProduct(prod)"
+              >
+                <div class="d-flex align-items-center gap-3 overflow-hidden me-2">
+                  @if (prod.image) {
+                    <img [src]="prod.image" [alt]="prod.name" class="mini-thumb rounded" />
+                  } @else {
+                    <div
+                      class="mini-thumb-placeholder rounded d-flex align-items-center justify-content-center"
+                    >
+                      <i class="bi bi-box-seam text-soft"></i>
+                    </div>
+                  }
+                  <div class="text-truncate">
+                    <div class="fw-medium text-white text-truncate">{{ prod.name }}</div>
+                    <div class="small text-soft font-monospace">ID: {{ prod.id }}</div>
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-3 shrink-0">
+                  <span class="product-price text-indigo font-monospace">{{
+                    prod.price | currency
+                  }}</span>
+                  <button type="button" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-plus-lg me-1"></i> Seleccionar
+                  </button>
+                </div>
+              </div>
+            }
+            @if (filteredAvailableProducts().length === 0) {
+              <div class="empty-results text-center py-4 text-soft">
+                <i class="bi bi-search d-block fs-3 mb-2"></i>
+                No hay más productos disponibles para seleccionar.
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="modal-footer border-0">
+          <button type="button" class="btn-save-primary w-100 m-0" (click)="closeModal()">
+            Listo ({{ productCount() }}/15 seleccionados)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

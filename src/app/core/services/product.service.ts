@@ -77,6 +77,22 @@ export class ProductService {
     });
   }
 
+  getProductsByIds(ids: string[]): Observable<Product[]> {
+    if (!ids || ids.length === 0) {
+      return of([]);
+    }
+    return this.getProducts().pipe(
+      map((products) => {
+        const productMap = new Map(products.map((p) => [p.id, p]));
+        return ids.map((id) => productMap.get(id)).filter((p): p is Product => p !== undefined);
+      }),
+      catchError((err) => {
+        console.warn('Unable to load products by IDs:', err);
+        return of([]);
+      }),
+    );
+  }
+
   getProductsByQuery(categoryId: string | null): Observable<Product[]> {
     return runInInjectionContext(this.injector, () => {
       const constraints: QueryConstraint[] = [storeIdFilter()];
