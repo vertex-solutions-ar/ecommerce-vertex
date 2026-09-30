@@ -28,6 +28,13 @@
       </section>
     }
 
+    @if (banner.featuredProducts?.enabled && featuredProducts().length > 0) {
+      <app-featured-slider
+        [title]="banner.featuredProducts?.title || 'Destacados'"
+        [products]="featuredProducts()"
+      ></app-featured-slider>
+    }
+
     @if (banner.featuredCategories && banner.featuredCategories.length > 0) {
       <div class="home-container">
         <section class="section" aria-label="Categorías destacadas">

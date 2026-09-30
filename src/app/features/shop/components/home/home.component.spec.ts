@@ -34,10 +34,14 @@ describe('Home', () => {
 
   beforeEach(async () => {
     homeContentServiceSpy = jasmine.createSpyObj('HomeContentService', ['getHeroBanner']);
-    productServiceSpy = jasmine.createSpyObj('ProductService', ['getLatestProducts']);
+    productServiceSpy = jasmine.createSpyObj('ProductService', [
+      'getLatestProducts',
+      'getProductsByIds',
+    ]);
 
     homeContentServiceSpy.getHeroBanner.and.returnValue(of(mockBanner));
     productServiceSpy.getLatestProducts.and.returnValue(of(mockProducts));
+    productServiceSpy.getProductsByIds.and.returnValue(of(mockProducts));
 
     await TestBed.configureTestingModule({
       imports: [Home],
@@ -82,6 +86,45 @@ describe('Home', () => {
     expect(component.newArrivals()).toEqual([]);
     expect(component.bannerLoading()).toBeFalse();
     expect(component.productsLoading()).toBeFalse();
+    expect(component.featuredProducts()).toEqual([]);
+  });
+
+  it('should load featured products when enabled in banner', () => {
+    const bannerWithFeatured = {
+      ...mockBanner,
+      featuredProducts: {
+        enabled: true,
+        title: 'Productos Estrella',
+        productIds: ['p1', 'p2'],
+      },
+    } as unknown as HeroBanner;
+    homeContentServiceSpy.getHeroBanner.and.returnValue(of(bannerWithFeatured));
+
+    createComponent();
+    fixture.detectChanges();
+
+    expect(productServiceSpy.getProductsByIds).toHaveBeenCalledWith(['p1', 'p2']);
+    expect(component.featuredProducts()).toEqual(mockProducts);
+  });
+
+  it('should handle error when loading featured products', () => {
+    const bannerWithFeatured = {
+      ...mockBanner,
+      featuredProducts: {
+        enabled: true,
+        title: 'Productos Estrella',
+        productIds: ['p1', 'p2'],
+      },
+    } as unknown as HeroBanner;
+    homeContentServiceSpy.getHeroBanner.and.returnValue(of(bannerWithFeatured));
+    productServiceSpy.getProductsByIds.and.returnValue(
+      throwError(() => new Error('Failed to load')),
+    );
+
+    createComponent();
+    fixture.detectChanges();
+
+    expect(component.featuredProducts()).toEqual([]);
   });
 
   describe('isCarousel', () => {

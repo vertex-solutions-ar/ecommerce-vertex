@@ -15,12 +15,13 @@ import type { Product } from '@core/models/product.model';
 import { HomeContentService } from '@core/services/home-content.service';
 import { ProductService } from '@core/services/product.service';
 import { Carousel } from '@shared/components/carousel/carousel';
+import { FeaturedSlider } from './components/featured-slider/featured-slider';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterModule, CurrencyPipe, Carousel],
+  imports: [CommonModule, RouterModule, CurrencyPipe, Carousel, FeaturedSlider],
   templateUrl: './home.html',
   styleUrl: './home.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,6 +34,7 @@ export class Home implements OnInit {
   // Signals: undefined = loading, null = no data, value = loaded
   readonly heroBanner = signal<HeroBanner | null | undefined>(undefined);
   readonly newArrivals = signal<Product[] | undefined>(undefined);
+  readonly featuredProducts = signal<Product[]>([]);
 
   readonly bannerLoading = computed(() => this.heroBanner() === undefined);
   readonly productsLoading = computed(() => this.newArrivals() === undefined);
@@ -42,8 +44,14 @@ export class Home implements OnInit {
       .getHeroBanner()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (data) => this.heroBanner.set(data),
-        error: () => this.heroBanner.set(null),
+        next: (data) => {
+          this.heroBanner.set(data);
+          this.loadFeaturedProducts(data);
+        },
+        error: () => {
+          this.heroBanner.set(null);
+          this.featuredProducts.set([]);
+        },
       });
 
     this.productService
@@ -53,7 +61,25 @@ export class Home implements OnInit {
         next: (data) => this.newArrivals.set(data),
         error: () => this.newArrivals.set([]),
       });
-    console.log('*** ESTA ES LA VERSION QUE QUEREMOS PROBAR');
+  }
+
+  private loadFeaturedProducts(banner: HeroBanner | null): void {
+    const section = banner?.featuredProducts;
+    if (!section?.enabled || !section.productIds || section.productIds.length === 0) {
+      this.featuredProducts.set([]);
+      return;
+    }
+
+    this.productService
+      .getProductsByIds(section.productIds)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (products) => this.featuredProducts.set(products),
+        error: (err) => {
+          console.warn('Unable to load featured products:', err);
+          this.featuredProducts.set([]);
+        },
+      });
   }
 
   isCarousel(banner: HeroBanner | null | undefined): boolean {
