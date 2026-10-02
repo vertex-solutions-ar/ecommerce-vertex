@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  signal,
+  computed,
+} from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { of, switchMap, combineLatest } from 'rxjs';
@@ -45,6 +52,30 @@ export class Product {
   allAttributes = signal<Attribute[]>([]);
   private allPossibleValues = new Map<string, string[]>();
 
+  readonly isSimpleProduct = computed(() => {
+    const p = this.product();
+    if (!p) {
+      return false;
+    }
+    const productVariants = p.variants && p.variants.length > 0 ? p.variants : this.variants();
+    return (
+      p.hasAttributes === false ||
+      (p.hasAttributes === undefined && (!productVariants || productVariants.length === 0))
+    );
+  });
+
+  readonly maxAvailableStock = computed(() => {
+    const p = this.product();
+    if (!p) {
+      return 0;
+    }
+    return this.isSimpleProduct()
+      ? (p.stock ?? p.totalStock ?? 0)
+      : (this.selectedVariant()?.stock ?? 0);
+  });
+
+  readonly isOutOfStock = computed(() => this.maxAvailableStock() <= 0);
+
   constructor() {
     this.loadProductData();
   }
@@ -87,26 +118,15 @@ export class Product {
       return;
     }
 
-    const variantAttrs = product.variantAttributes ?? [];
-    const variants = this.variants();
-
-    // If product has no variant attributes (simple product)
-    if (variantAttrs.length === 0) {
+    // Evaluation protected for legacy simple products using computed signal
+    if (this.isSimpleProduct()) {
       this.attributes.set([]);
-      if (variants.length > 0) {
-        this.selectedVariant.set(variants[0]);
-      } else {
-        // Fallback for simple products created without subcollection variants
-        this.selectedVariant.set({
-          id: 'default',
-          productId: product.id,
-          sku: `${product.id}-BASE`,
-          stock: product.totalStock ?? 1,
-          attributes: {},
-        });
-      }
+      this.selectedVariant.set(null);
       return;
     }
+
+    const variantAttrs = product.variantAttributes ?? [];
+    const variants = this.variants();
 
     this.allPossibleValues.clear();
 
@@ -249,22 +269,28 @@ export class Product {
   }
 
   increaseQuantity(): void {
-    const variant = this.selectedVariant();
-    if (variant) {
-      this.quantity.update((q) => (q < variant.stock ? q + 1 : q));
-    }
+    const max = this.maxAvailableStock();
+    this.quantity.update((q) => (q < max ? q + 1 : q));
   }
 
   addToCart(): void {
     const product = this.product();
+    if (!product || this.isOutOfStock()) {
+      return;
+    }
+
+    if (this.isSimpleProduct()) {
+      this.cartService.addItem(product, null, this.quantity());
+      return;
+    }
+
     const variant = this.selectedVariant();
-    if (product && variant) {
+    if (variant && variant.stock > 0) {
       this.cartService.addItem(product, variant, this.quantity());
     }
   }
 
   get isMaxQuantityReached(): boolean {
-    const variant = this.selectedVariant();
-    return !variant || this.quantity() >= (variant.stock || 1);
+    return this.quantity() >= this.maxAvailableStock();
   }
 }

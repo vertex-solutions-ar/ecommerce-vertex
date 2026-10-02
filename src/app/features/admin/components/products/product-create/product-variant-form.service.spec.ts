@@ -95,23 +95,29 @@ describe('ProductVariantFormService', () => {
     });
   });
 
-  it('should build product data object', () => {
+  it('should build simple product data object with direct stock', () => {
     const formValue: ProductFormValue = {
-      name: 'Remera',
+      name: 'Remera Simple',
       description: 'Descripción',
       price: 2500,
       categoryId: 'cat-1',
       image: 'http://example.com/img.jpg',
       images: ['http://example.com/img2.jpg'],
-      variantAttributes: ['color'],
+      hasAttributes: false,
+      stock: 15,
+      variantAttributes: [],
       variants: [],
     };
 
     const data = service.buildProductData(formValue);
 
-    expect(data.name).toBe('Remera');
+    expect(data.name).toBe('Remera Simple');
     expect(data.price).toBe(2500);
-    expect(data.totalStock).toBe(0);
+    expect(data.hasAttributes).toBeFalse();
+    expect(data.stock).toBe(15);
+    expect(data.totalStock).toBe(15);
+    expect(data.variants).toEqual([]);
+    expect(data.variantAttributes).toEqual([]);
     expect(data.createdAt).toBeInstanceOf(Date);
   });
 
@@ -123,6 +129,8 @@ describe('ProductVariantFormService', () => {
       categoryId: 'cat-1',
       image: 'http://example.com/img.jpg',
       images: ['http://example.com/img2.jpg'],
+      hasAttributes: true,
+      stock: 0,
       variantAttributes: ['color'],
       variants: [
         { id: 'v1', attributes: { color: 'Rojo' }, stock: 8 },
@@ -134,6 +142,7 @@ describe('ProductVariantFormService', () => {
 
     expect(data.name).toBe('Remera');
     expect(data.price).toBe(2500);
+    expect(data.hasAttributes).toBeTrue();
     expect(data.totalStock).toBe(20);
     expect(data.createdAt).toBeInstanceOf(Date);
   });
@@ -179,5 +188,51 @@ describe('ProductVariantFormService', () => {
     expect((form.get('variants') as FormArray).length).toBe(1);
     expect(form.pristine).toBeTrue();
     expect(form.untouched).toBeTrue();
+  });
+
+  it('should populate edit form correctly for a legacy simple product without hasAttributes field', () => {
+    const form = service.createProductForm();
+    const legacyProduct: Product = {
+      id: 'p-legacy',
+      name: 'Taza Cerámica',
+      description: 'Taza artesanal',
+      price: 1500,
+      categoryId: 'cat-home',
+      image: 'http://example.com/taza.jpg',
+      images: [],
+      stock: 25,
+      totalStock: 25,
+    } as unknown as Product;
+
+    service.populateEditForm(form, legacyProduct, []);
+
+    expect(form.get('name')?.value).toBe('Taza Cerámica');
+    expect(form.get('hasAttributes')?.value).toBeFalse();
+    expect(form.get('stock')?.value).toBe(25);
+    expect((form.get('variants') as FormArray).length).toBe(0);
+    expect(form.get('stock')?.valid).toBeTrue();
+  });
+
+  it('should update stock validators when toggling hasAttributes', () => {
+    const form = service.createProductForm();
+    const stockControl = form.get('stock')!;
+
+    // Initial state: hasAttributes = false -> stock is required and >= 0
+    service.updateStockValidators(form, false);
+    stockControl.setValue(null);
+    expect(stockControl.valid).toBeFalse();
+    expect(stockControl.hasError('required')).toBeTrue();
+
+    stockControl.setValue(-5);
+    expect(stockControl.valid).toBeFalse();
+    expect(stockControl.hasError('min')).toBeTrue();
+
+    stockControl.setValue(10);
+    expect(stockControl.valid).toBeTrue();
+
+    // Toggle: hasAttributes = true -> stock validators cleared
+    service.updateStockValidators(form, true);
+    stockControl.setValue(null);
+    expect(stockControl.valid).toBeTrue();
   });
 });

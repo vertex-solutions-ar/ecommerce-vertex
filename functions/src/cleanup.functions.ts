@@ -55,24 +55,32 @@ export const cleanupExpiredOrders = onSchedule('every 60 minutes', async (event)
       const productRef = db
         .collection(collectionPath(COLLECTIONS.PRODUCTS))
         .doc(validItem.productId);
-      const variantRef = productRef
-        .collection('variants')
-        .doc(validItem.variantId);
 
-      const [productDoc, variantDoc] = await Promise.all([
-        productRef.get(),
-        variantRef.get(),
-      ]);
-
-      if (variantDoc.exists) {
-        batch.update(variantRef, {
-          stock: FieldValue.increment(validItem.quantity),
-        });
-      }
-      if (productDoc.exists) {
+      if (!validItem.variantId) {
         batch.update(productRef, {
+          stock: FieldValue.increment(validItem.quantity),
           totalStock: FieldValue.increment(validItem.quantity),
         });
+      } else {
+        const variantRef = productRef
+          .collection('variants')
+          .doc(validItem.variantId);
+
+        const [productDoc, variantDoc] = await Promise.all([
+          productRef.get(),
+          variantRef.get(),
+        ]);
+
+        if (variantDoc.exists) {
+          batch.update(variantRef, {
+            stock: FieldValue.increment(validItem.quantity),
+          });
+        }
+        if (productDoc.exists) {
+          batch.update(productRef, {
+            totalStock: FieldValue.increment(validItem.quantity),
+          });
+        }
       }
     }
 

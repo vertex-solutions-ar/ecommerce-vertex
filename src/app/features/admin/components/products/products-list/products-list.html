@@ -4,14 +4,14 @@
       <h1 class="products__title text-center mb-4">Catálogo de Productos</h1>
 
       <div class="row g-3 align-items-center">
-        <div class="col-lg-8 col-md-12">
+        <div class="col-lg-7 col-md-6 col-12">
           <app-admin-search-bar
             [placeholder]="'Buscar por nombre o descripción...'"
             [initialValue]="searchTermSubject.value"
             (searchChange)="onSearchChange($event)"
           ></app-admin-search-bar>
         </div>
-        <div class="col-lg-4 col-md-12">
+        <div class="col-lg-3 col-md-4 col-8">
           <select
             class="form-select glass-input"
             [ngModel]="filterCategorySubject.value"
@@ -25,11 +25,55 @@
             }
           </select>
         </div>
+        <div class="col-lg-2 col-md-2 col-4 d-flex justify-content-end">
+          <div
+            class="btn-group density-switcher"
+            role="group"
+            aria-label="Selector de densidad de visualización"
+          >
+            <button
+              type="button"
+              class="btn density-btn"
+              [class.active]="densityMode() === 'compact'"
+              (click)="setDensity('compact')"
+              title="Vista Compacta"
+              aria-label="Vista compacta"
+            >
+              <i class="bi bi-grid-3x3-gap"></i>
+            </button>
+            <button
+              type="button"
+              class="btn density-btn"
+              [class.active]="densityMode() === 'comfortable'"
+              (click)="setDensity('comfortable')"
+              title="Vista Cómoda"
+              aria-label="Vista cómoda"
+            >
+              <i class="bi bi-grid"></i>
+            </button>
+            <button
+              type="button"
+              class="btn density-btn"
+              [class.active]="densityMode() === 'list'"
+              (click)="setDensity('list')"
+              title="Vista de Lista"
+              aria-label="Vista de lista"
+            >
+              <i class="bi bi-list-ul"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </header>
 
     @if (isLoading()) {
-      <div class="products__grid" aria-busy="true" aria-label="Cargando productos">
+      <div
+        class="products__grid"
+        [class.density-compact]="densityMode() === 'compact'"
+        [class.density-comfortable]="densityMode() === 'comfortable'"
+        aria-busy="true"
+        aria-label="Cargando productos"
+      >
         @for (_ of [1, 2, 3, 4, 5, 6]; track $index) {
           <div class="glass-card product-card product-card--skeleton">
             <div class="product-card__image-wrapper skeleton-box skeleton-box--img"></div>
@@ -58,77 +102,201 @@
           }
         </div>
       } @else {
-        <div class="products__grid">
-          @for (product of products; track product.id) {
-            <div class="glass-card product-card" (click)="goToDetail(product.id)">
-              <div class="product-card__image-wrapper">
-                @if (product.image || product.images?.[0]) {
-                  <img
-                    [src]="product.image || product.images?.[0]"
-                    [alt]="product.name"
-                    class="product-card__image"
-                    loading="lazy"
-                  />
-                } @else {
-                  <div class="product-card__image-placeholder">
-                    <i class="bi bi-image"></i>
-                  </div>
+        @if (densityMode() === 'list') {
+          <div class="table-card table-responsive density-list p-0">
+            <table
+              class="table table-hover align-middle mb-0"
+              aria-label="Tabla de catálogo de productos"
+            >
+              <thead>
+                <tr>
+                  <th scope="col" class="th-img">Miniatura</th>
+                  <th scope="col" class="th-product">Producto</th>
+                  <th scope="col" class="th-category">Categoría</th>
+                  <th scope="col" class="th-price">Precio</th>
+                  <th scope="col" class="th-stock text-center">Stock</th>
+                  <th scope="col" class="th-status text-center">Estado</th>
+                  <th scope="col" class="th-actions actions-cell text-end text-nowrap">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (product of products; track product.id) {
+                  <tr class="product-row" (click)="goToDetail(product.id)">
+                    <td class="td-img">
+                      @if (product.image || product.images?.[0]) {
+                        <img
+                          [src]="product.image || product.images?.[0]"
+                          [alt]="product.name"
+                          class="product-table-img rounded"
+                          loading="lazy"
+                        />
+                      } @else {
+                        <div class="product-table-placeholder rounded">
+                          <i class="bi bi-image"></i>
+                        </div>
+                      }
+                    </td>
+                    <td class="td-product">
+                      <div
+                        class="fw-bold product-name-cell text-white text-truncate"
+                        [title]="product.name"
+                      >
+                        {{ product.name }}
+                      </div>
+                      <div class="text-muted small text-truncate">
+                        @if (product.variants?.[0]?.sku) {
+                          <span>SKU: {{ product.variants?.[0]?.sku }}</span>
+                        } @else {
+                          <span>ID: #{{ product.id.slice(0, 8) }}</span>
+                        }
+                      </div>
+                    </td>
+                    <td class="td-category">
+                      <span class="category-pill text-truncate">
+                        <i class="bi bi-tag-fill me-1"></i>
+                        {{ getCategoryName(product.categoryId) | titlecase }}
+                      </span>
+                    </td>
+                    <td class="td-price">
+                      <span class="product-price fw-bold">
+                        {{ product.price | currency: 'ARS' : '$' }}
+                      </span>
+                    </td>
+                    <td class="td-stock text-center">
+                      <span
+                        class="badge stock-badge"
+                        [ngClass]="{
+                          'bg-success text-white': product.totalStock > 10,
+                          'bg-warning text-dark':
+                            product.totalStock > 0 && product.totalStock <= 10,
+                          'bg-danger text-white': product.totalStock === 0,
+                        }"
+                      >
+                        {{ product.totalStock }} un.
+                      </span>
+                    </td>
+                    <td class="td-status text-center">
+                      @if (product.totalStock > 0 && product.inStock !== false) {
+                        <span
+                          class="badge bg-success-subtle text-success border border-success-subtle"
+                        >
+                          <i class="bi bi-check-circle-fill me-1"></i>Activo
+                        </span>
+                      } @else {
+                        <span
+                          class="badge bg-danger-subtle text-danger border border-danger-subtle"
+                        >
+                          <i class="bi bi-x-circle-fill me-1"></i>Inactivo
+                        </span>
+                      }
+                    </td>
+                    <td
+                      class="td-actions actions-cell text-end text-nowrap"
+                      (click)="$event.stopPropagation()"
+                    >
+                      <div class="d-inline-flex gap-2 align-items-center">
+                        <a
+                          [routerLink]="['/admin/products/edit', product.id]"
+                          (click)="$event.stopPropagation()"
+                          class="btn btn-action-table btn-outline-primary"
+                          title="Editar"
+                          aria-label="Editar producto"
+                        >
+                          <i class="bi bi-pencil-square"></i>
+                        </a>
+                        <button
+                          type="button"
+                          (click)="confirmDelete(product); $event.stopPropagation()"
+                          class="btn btn-action-table btn-outline-danger"
+                          title="Eliminar"
+                          aria-label="Eliminar producto"
+                        >
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div
+            class="products__grid"
+            [class.density-compact]="densityMode() === 'compact'"
+            [class.density-comfortable]="densityMode() === 'comfortable'"
+          >
+            @for (product of products; track product.id) {
+              <div class="glass-card product-card" (click)="goToDetail(product.id)">
+                <div class="product-card__image-wrapper">
+                  @if (product.image || product.images?.[0]) {
+                    <img
+                      [src]="product.image || product.images?.[0]"
+                      [alt]="product.name"
+                      class="product-card__image"
+                      loading="lazy"
+                    />
+                  } @else {
+                    <div class="product-card__image-placeholder">
+                      <i class="bi bi-image"></i>
+                    </div>
+                  }
 
-                <span
-                  class="badge stock-badge-overlay"
-                  [ngClass]="{
-                    'bg-success text-white': product.totalStock > 10,
-                    'bg-warning text-dark': product.totalStock > 0 && product.totalStock <= 10,
-                    'bg-danger text-white': product.totalStock === 0,
-                  }"
-                >
-                  {{ product.totalStock }} un.
-                </span>
-              </div>
+                  <span
+                    class="badge stock-badge-overlay"
+                    [ngClass]="{
+                      'bg-success text-white': product.totalStock > 10,
+                      'bg-warning text-dark': product.totalStock > 0 && product.totalStock <= 10,
+                      'bg-danger text-white': product.totalStock === 0,
+                    }"
+                  >
+                    {{ product.totalStock }} un.
+                  </span>
+                </div>
 
-              <div class="card-body">
-                <h3 class="product-card__name">{{ product.name }}</h3>
+                <div class="card-body">
+                  <h3 class="product-card__name">{{ product.name }}</h3>
 
-                <span class="product-card__category">
-                  <i class="bi bi-tag-fill me-1"></i>
-                  {{ getCategoryName(product.categoryId) | titlecase }}
-                </span>
+                  <span class="product-card__category">
+                    <i class="bi bi-tag-fill me-1"></i>
+                    {{ getCategoryName(product.categoryId) | titlecase }}
+                  </span>
 
-                <p class="product-card__desc">
-                  {{ product.description | truncate: 60 }}
-                </p>
+                  <p class="product-card__desc">
+                    {{ product.description | truncate: 60 }}
+                  </p>
 
-                <div class="product-card__price-container mt-auto">
-                  <span class="product-card__price-final">{{
-                    product.price | currency: 'ARS' : '$'
-                  }}</span>
+                  <div class="product-card__price-container mt-auto">
+                    <span class="product-card__price-final">{{
+                      product.price | currency: 'ARS' : '$'
+                    }}</span>
+                  </div>
+                </div>
+
+                <div class="card-footer-action">
+                  <a
+                    [routerLink]="['/admin/products/edit', product.id]"
+                    (click)="$event.stopPropagation()"
+                    class="btn-action btn-outline-primary"
+                    title="Editar"
+                  >
+                    <i class="bi bi-pencil-square"></i>
+                  </a>
+                  <button
+                    (click)="confirmDelete(product); $event.stopPropagation()"
+                    class="btn-action btn-outline-danger"
+                    title="Eliminar"
+                  >
+                    <i class="bi bi-trash"></i>
+                  </button>
                 </div>
               </div>
-
-              <div class="card-footer-action">
-                <a
-                  [routerLink]="['/admin/products/edit', product.id]"
-                  (click)="$event.stopPropagation()"
-                  class="btn-action btn-outline-primary"
-                  title="Editar"
-                >
-                  <i class="bi bi-pencil-square"></i>
-                </a>
-                <button
-                  (click)="confirmDelete(product); $event.stopPropagation()"
-                  class="btn-action btn-outline-danger"
-                  title="Eliminar"
-                >
-                  <i class="bi bi-trash"></i>
-                </button>
-              </div>
-            </div>
-          }
-        </div>
+            }
+          </div>
+        }
 
         @if (totalProducts > 0) {
-          <div class="mt-4">
+          <div class="admin-pagination-container">
             <app-admin-pagination
               [totalItems]="totalProducts"
               [currentPage]="currentPageSubject.value"

@@ -10,7 +10,6 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { animate, state, style, transition, trigger } from '@angular/animations';
 import type { Subscription } from 'rxjs';
 import { interval } from 'rxjs';
 import type { HeroImage } from '@core/models/home-content.model';
@@ -22,15 +21,6 @@ import type { HeroImage } from '@core/models/home-content.model';
   templateUrl: './carousel.html',
   styleUrl: './carousel.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    trigger('slideAnimation', [
-      state('in', style({ opacity: 1, transform: 'translateX(0)' })),
-      transition('* => *', [
-        style({ opacity: 0, transform: 'translateX(100%)' }),
-        animate('500ms ease-in-out'),
-      ]),
-    ]),
-  ],
 })
 export class Carousel implements OnInit, OnDestroy {
   @Input()
@@ -41,6 +31,8 @@ export class Carousel implements OnInit, OnDestroy {
   showIndicators: boolean = true;
   @Input()
   showArrows: boolean = true;
+  @Input()
+  pauseOnHover: boolean = false;
   @Input()
   set aspectRatio(value: string) {
     this._aspectRatio = value;
@@ -90,14 +82,14 @@ export class Carousel implements OnInit, OnDestroy {
 
   @HostListener('mouseenter')
   onMouseEnter(): void {
-    if (this.images.length > 1) {
+    if (this.pauseOnHover && this.images.length > 1) {
       this.stopAutoplay();
     }
   }
 
   @HostListener('mouseleave')
   onMouseLeave(): void {
-    if (this.images.length > 1) {
+    if (this.pauseOnHover && this.images.length > 1) {
       this.startAutoplay();
     }
   }

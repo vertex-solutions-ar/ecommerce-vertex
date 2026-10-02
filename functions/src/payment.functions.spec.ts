@@ -277,4 +277,149 @@ describe('createPaymentPreference', () => {
     );
     expect(productUpdates).toHaveLength(0);
   });
+
+  it('creates payment preference for simple products with null variantId validating stock against productData.stock', async () => {
+    const validData = {
+      items: [
+        {
+          productId: 'prod-simple-null-variant',
+          variantId: null,
+          title: 'Vela Aromática',
+          quantity: 2,
+          unit_price: 1200,
+        },
+      ],
+      external_reference: 'order-789',
+      projectId: 'vtx-sd-c3732d17',
+    };
+
+    const mockOrderData = {
+      status: 'pending',
+      storeId: 'store-test',
+    };
+
+    const mockProductData = {
+      price: 1200,
+      hasAttributes: false,
+      stock: 8,
+      totalStock: 8,
+    };
+
+    const mockTransaction = {
+      get: vi.fn().mockImplementation(async (ref: any) => {
+        if (ref.id === 'order-789') {
+          return { exists: true, data: () => mockOrderData };
+        }
+        if (ref.id === 'prod-simple-null-variant') {
+          return { exists: true, data: () => mockProductData };
+        }
+        return { exists: false, data: () => null };
+      }),
+      update: vi.fn(),
+    };
+
+    mockRunTransaction.mockImplementation(async (cb: any) => {
+      return await cb(mockTransaction);
+    });
+
+    mockCreatePreference.mockResolvedValueOnce({
+      id: 'pref-mp-789',
+      init_point: 'https://mercadopago.com/checkout/789',
+      date_of_expiration: new Date().toISOString(),
+    });
+
+    const mockDoc = (docId: string) => ({
+      id: docId,
+      collection: vi.fn(() => ({
+        doc: (vId: string) => mockDoc(vId),
+      })),
+    });
+
+    mockTenantDbCollection.mockImplementation((_colName: string) => ({
+      doc: (docId: string) => mockDoc(docId),
+    }));
+
+    const response = await paymentHandler({ data: validData });
+
+    expect(mockRunTransaction).toHaveBeenCalled();
+    expect(mockCreatePreference).toHaveBeenCalledWith(
+      expect.objectContaining({
+        external_reference: 'order-789',
+        items: [
+          {
+            productId: 'prod-simple-null-variant',
+            variantId: null,
+            title: 'Vela Aromática',
+            quantity: 2,
+            unit_price: 1200,
+          },
+        ],
+      }),
+      'store-test',
+    );
+    expect(response).toEqual({
+      id: 'pref-mp-789',
+      init_point: 'https://mercadopago.com/checkout/789',
+    });
+  });
+
+  it('fails with resource-exhausted if simple product stock is insufficient', async () => {
+    const validData = {
+      items: [
+        {
+          productId: 'prod-simple-low-stock',
+          variantId: null,
+          title: 'Taza Cerámica',
+          quantity: 10,
+          unit_price: 500,
+        },
+      ],
+      external_reference: 'order-low-stock',
+      projectId: 'vtx-sd-c3732d17',
+    };
+
+    const mockOrderData = {
+      status: 'pending',
+      storeId: 'store-test',
+    };
+
+    const mockProductData = {
+      price: 500,
+      stock: 2,
+      totalStock: 2,
+    };
+
+    const mockTransaction = {
+      get: vi.fn().mockImplementation(async (ref: any) => {
+        if (ref.id === 'order-low-stock') {
+          return { exists: true, data: () => mockOrderData };
+        }
+        if (ref.id === 'prod-simple-low-stock') {
+          return { exists: true, data: () => mockProductData };
+        }
+        return { exists: false, data: () => null };
+      }),
+      update: vi.fn(),
+    };
+
+    mockRunTransaction.mockImplementation(async (cb: any) => {
+      return await cb(mockTransaction);
+    });
+
+    const mockDoc = (docId: string) => ({
+      id: docId,
+      collection: vi.fn(() => ({
+        doc: (vId: string) => mockDoc(vId),
+      })),
+    });
+
+    mockTenantDbCollection.mockImplementation((_colName: string) => ({
+      doc: (docId: string) => mockDoc(docId),
+    }));
+
+    await expect(paymentHandler({ data: validData })).rejects.toMatchObject({
+      code: 'resource-exhausted',
+    });
+  });
 });
+

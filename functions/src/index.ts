@@ -11,3 +11,4 @@ export * from './test-email.functions';
 export * from './role.functions';
 export * from './staff.functions';
 export * from './superadmin.functions';
+export * from './seo.functions';

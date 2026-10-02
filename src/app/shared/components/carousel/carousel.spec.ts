@@ -97,12 +97,26 @@ describe('Carousel', () => {
     expect(component.getQueryParams(mockImages[0])).toBeNull();
   });
 
-  it('should pause autoplay on mouseenter and resume on mouseleave', () => {
+  it('should pause autoplay on mouseenter and resume on mouseleave when pauseOnHover is true', () => {
     component.images = mockImages;
+    component.pauseOnHover = true;
     fixture.detectChanges();
 
     component.onMouseEnter();
     expect(component.isAutoplayActive).toBeFalse();
+
+    component.onMouseLeave();
+    expect(component.isAutoplayActive).toBeTrue();
+  });
+
+  it('should not pause autoplay on mouseenter when pauseOnHover is false', () => {
+    component.images = mockImages;
+    component.pauseOnHover = false;
+    fixture.detectChanges();
+
+    expect(component.isAutoplayActive).toBeTrue();
+    component.onMouseEnter();
+    expect(component.isAutoplayActive).toBeTrue();
 
     component.onMouseLeave();
     expect(component.isAutoplayActive).toBeTrue();
@@ -137,6 +151,7 @@ describe('Carousel', () => {
 
   it('should handle mouse events and touch events when images.length is 1', () => {
     component.images = [mockImages[0]];
+    component.pauseOnHover = true;
     fixture.detectChanges();
 
     component.onMouseEnter();

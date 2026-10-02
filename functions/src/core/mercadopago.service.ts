@@ -506,7 +506,7 @@ export async function createPreference(data: PaymentRequestData, tenantId?: stri
   );
   const preferenceBody = {
     items: items.map((item) => ({
-      id: item.variantId,
+      id: item.variantId || item.productId,
       title: item.title,
       quantity: Number(item.quantity),
       unit_price: Number(item.unit_price),

@@ -15,7 +15,7 @@
 
 .products-list-wrapper {
   width: 100%;
-  padding-bottom: 2rem;
+  padding-bottom: 5.5rem;
   animation: float-in 0.6s ease-out;
   overflow-x: hidden;
 }
@@ -30,6 +30,47 @@
 
 .products__header {
   margin-bottom: var(--space-8);
+}
+
+.density-switcher {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 3px;
+  display: inline-flex;
+  gap: 2px;
+
+  .density-btn {
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+    padding: 0.4rem 0.65rem;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+    }
+
+    &.active {
+      background: rgba(168, 85, 247, 0.25);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+    }
+
+    &:focus-visible {
+      outline: 2px solid rgba(168, 85, 247, 0.6);
+      outline-offset: 2px;
+    }
+  }
 }
 
 .products__title {
@@ -115,26 +156,144 @@
 
 .products__grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+  transition: all 0.3s ease;
 
   @media (min-width: 768px) {
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
   }
 
-  @media (min-width: 992px) {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
+  // ── Nueva Vista Cómoda ──────────────────────────────────────────────────
+  &.density-comfortable {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75rem;
+
+    @media (min-width: 768px) {
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .product-card {
+      .product-card__image-wrapper {
+        height: 150px;
+        aspect-ratio: auto;
+
+        .product-card__image {
+          height: 150px;
+          object-fit: cover;
+        }
+      }
+
+      .card-body {
+        padding: 1rem;
+      }
+
+      .card-footer-action {
+        padding: 0.6rem 1rem;
+        gap: 8px;
+      }
+    }
+
+    .product-card--skeleton {
+      .skeleton-box--img {
+        height: 150px;
+        aspect-ratio: auto;
+      }
+    }
   }
 
-  @media (min-width: 1400px) {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 28px;
+  // ── Nueva Vista Compacta ────────────────────────────────────────────────
+  &.density-compact {
+    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+    gap: 0.5rem;
+
+    @media (min-width: 768px) {
+      grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+      gap: 0.65rem;
+    }
+
+    .product-card {
+      .product-card__image-wrapper {
+        height: 105px;
+        aspect-ratio: auto;
+
+        .product-card__image {
+          height: 105px;
+          object-fit: cover;
+        }
+      }
+
+      .card-body {
+        padding: 0.5rem 0.65rem;
+      }
+
+      .product-card__name {
+        font-size: 0.8125rem;
+        margin-bottom: 0.15rem;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+        -webkit-line-clamp: unset;
+        line-clamp: unset;
+      }
+
+      .product-card__category {
+        font-size: 0.625rem;
+        margin-bottom: 2px;
+      }
+
+      .product-card__desc {
+        display: none;
+      }
+
+      .product-card__price-container {
+        padding-top: 0.25rem;
+        margin-top: auto;
+      }
+
+      .product-card__price-final {
+        font-size: 0.95rem;
+      }
+
+      .card-footer-action {
+        padding: 0.35rem 0.5rem;
+        gap: 4px;
+        margin-top: auto;
+
+        .btn-action {
+          padding: 3px 5px;
+          font-size: 0.8rem;
+          border-radius: 6px;
+        }
+      }
+
+      .stock-badge-overlay {
+        top: 0.35rem;
+        right: 0.35rem;
+        font-size: 0.6rem;
+        padding: 0.2em 0.5em;
+        border-radius: 6px;
+      }
+    }
+
+    .product-card--skeleton {
+      .skeleton-box--img {
+        height: 105px;
+        aspect-ratio: auto;
+      }
+    }
   }
 }
 
 .product-card {
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .glass-card {
@@ -346,6 +505,7 @@
   display: flex;
   gap: 2px;
   background: rgba(0, 0, 0, 0.15);
+  margin-top: auto;
 
   @media (min-width: 768px) {
     padding: 0.75rem 1rem;
@@ -470,11 +630,19 @@
   }
 }
 
+.admin-pagination-container {
+  margin-top: 1.5rem;
+
+  @media (min-width: 768px) {
+    padding-right: 5.5rem;
+  }
+}
+
 .fab-button {
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
-  z-index: 1050;
+  z-index: 1020;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -550,4 +718,237 @@
   100% {
     background-position: -200% 0;
   }
+}
+
+// ── Table Card Container (Autónomo para tablas, sin pseudo ::before de 200% ni transform) ──
+.table-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(25px) saturate(200%);
+  -webkit-backdrop-filter: blur(25px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+
+  &.density-list {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+
+    @media (min-width: 992px) {
+      overflow-x: hidden;
+      width: 100%;
+    }
+  }
+}
+
+// ── Table / List Density View ──────────────────────────────────────────────
+.density-list {
+  animation: fadeIn 0.3s ease-in-out;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  @media (min-width: 992px) {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  .table {
+    width: 100%;
+    margin-bottom: 0;
+    table-layout: auto;
+    border-collapse: separate;
+    border-spacing: 0;
+    color: #ffffff;
+    --bs-table-bg: transparent;
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.05);
+
+    thead th {
+      background: rgba(15, 23, 42, 0.6);
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.65rem 0.55rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 0.55rem 0.55rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      vertical-align: middle;
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .product-row {
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.06);
+      }
+    }
+  }
+
+  /* ── Calibración Elástica de Columnas ── */
+  .th-img,
+  .td-img {
+    width: 52px;
+    min-width: 52px;
+    text-align: center;
+    padding-left: 0.85rem;
+    padding-right: 0.35rem;
+  }
+
+  .th-product,
+  .td-product {
+    min-width: 170px;
+    max-width: 380px;
+  }
+
+  .th-category,
+  .td-category {
+    min-width: 115px;
+    white-space: nowrap;
+  }
+
+  .th-price,
+  .td-price {
+    min-width: 95px;
+    white-space: nowrap;
+  }
+
+  .th-stock,
+  .td-stock {
+    min-width: 80px;
+    white-space: nowrap;
+  }
+
+  .th-status,
+  .td-status {
+    min-width: 85px;
+    white-space: nowrap;
+  }
+
+  .actions-cell {
+    width: 1%;
+    white-space: nowrap;
+    padding-right: 0.85rem;
+  }
+
+  .category-pill {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    padding: 0.2rem 0.6rem;
+    border-radius: 50rem;
+    font-size: 0.75rem;
+  }
+
+  .product-table-img {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    display: inline-block;
+  }
+
+  .product-table-placeholder {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 1rem;
+  }
+
+  .product-name-cell {
+    font-size: 0.9rem;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 2px;
+  }
+
+  .product-price {
+    font-size: 0.95rem;
+    background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    white-space: nowrap;
+  }
+
+  .stock-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.3em 0.6em;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+
+  .btn-action-table {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+
+    &.btn-outline-primary {
+      color: #818cf8;
+
+      &:hover {
+        background: rgba(129, 140, 248, 0.2);
+        border-color: #818cf8;
+        color: #ffffff;
+      }
+    }
+
+    &.btn-outline-danger {
+      color: #f87171;
+
+      &:hover {
+        background: rgba(248, 113, 113, 0.2);
+        border-color: #f87171;
+        color: #ffffff;
+      }
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.category-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 0.2rem 0.6rem;
+  border-radius: 50rem;
+  font-size: 0.75rem;
 }

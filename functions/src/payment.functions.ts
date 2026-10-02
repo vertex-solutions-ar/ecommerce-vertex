@@ -264,24 +264,32 @@ async function revertStockOnFailure(orderId: string, projectId?: string) {
         const productRef = tenantDb
           .collection(collectionPath(COLLECTIONS.PRODUCTS))
           .doc(validItem.productId);
-        const variantRef = productRef
-          .collection('variants')
-          .doc(validItem.variantId);
 
-        const [productDoc, variantDoc] = await Promise.all([
-          transaction.get(productRef),
-          transaction.get(variantRef),
-        ]);
-
-        if (variantDoc.exists) {
-          transaction.update(variantRef, {
-            stock: FieldValue.increment(validItem.quantity),
-          });
-        }
-        if (productDoc.exists) {
+        if (!validItem.variantId) {
           transaction.update(productRef, {
+            stock: FieldValue.increment(validItem.quantity),
             totalStock: FieldValue.increment(validItem.quantity),
           });
+        } else {
+          const variantRef = productRef
+            .collection('variants')
+            .doc(validItem.variantId);
+
+          const [productDoc, variantDoc] = await Promise.all([
+            transaction.get(productRef),
+            transaction.get(variantRef),
+          ]);
+
+          if (variantDoc.exists) {
+            transaction.update(variantRef, {
+              stock: FieldValue.increment(validItem.quantity),
+            });
+          }
+          if (productDoc.exists) {
+            transaction.update(productRef, {
+              totalStock: FieldValue.increment(validItem.quantity),
+            });
+          }
         }
       }
 
@@ -391,11 +399,15 @@ export const createPaymentPreference = onCall(
           const productRef = tenantDb
             .collection(collectionPath(COLLECTIONS.PRODUCTS))
             .doc(item.productId);
-          const variantRef = productRef.collection('variants').doc(item.variantId);
+
+          const hasVariant = typeof item.variantId === 'string' && item.variantId.trim().length > 0;
+          const variantRef = hasVariant
+            ? productRef.collection('variants').doc(item.variantId!)
+            : null;
 
           const [productDoc, variantDoc] = await Promise.all([
             transaction.get(productRef),
-            transaction.get(variantRef),
+            variantRef ? transaction.get(variantRef) : Promise.resolve(null),
           ]);
 
           if (!productDoc.exists) {
@@ -407,7 +419,7 @@ export const createPaymentPreference = onCall(
 
           const productData = productDoc.data() ?? {};
 
-          if (variantDoc.exists) {
+          if (variantDoc && variantDoc.exists) {
             const variantData = variantDoc.data();
             if (!variantData || variantData.stock < item.quantity) {
               logger.warn(
@@ -436,10 +448,10 @@ export const createPaymentPreference = onCall(
               unit_price: serverPrice,
             });
           } else {
-            // Producto Simple (sin subcolección de variantes o variante base default)
+            // Producto Simple (sin variantId o sin variante en subcolección)
             const availableStock =
-              (productData['totalStock'] as number | undefined) ??
               (productData['stock'] as number | undefined) ??
+              (productData['totalStock'] as number | undefined) ??
               0;
 
             if (availableStock < item.quantity) {
@@ -459,7 +471,7 @@ export const createPaymentPreference = onCall(
 
             serverItems.push({
               productId: item.productId,
-              variantId: item.variantId || 'default',
+              variantId: item.variantId ?? null,
               title: item.title,
               quantity: item.quantity,
               unit_price: serverPrice,
@@ -717,41 +729,59 @@ export const mercadoPagoWebhookHandler = onRequest(
             const productRef = tenantDb
               .collection(collectionPath(COLLECTIONS.PRODUCTS))
               .doc(validItem.productId);
-            const variantRef = productRef
-              .collection('variants')
-              .doc(validItem.variantId);
 
-            const [productDoc, variantDoc] = await Promise.all([
-              transaction.get(productRef),
-              transaction.get(variantRef),
-            ]);
-
-            if (variantDoc.exists) {
-              const variantStock = Number(variantDoc.data()?.['stock'] ?? 0);
-              const variantToDeduct = Math.max(0, Math.min(validItem.quantity, variantStock));
-              if (variantToDeduct > 0) {
-                transaction.update(variantRef, {
-                  stock: FieldValue.increment(-variantToDeduct),
-                });
-              }
-              if (variantToDeduct < validItem.quantity) {
-                shortfall.push(
-                  `${validItem.productName || validItem.variantId} (variante, faltan ${validItem.quantity - variantToDeduct})`,
-                );
-              }
-            }
-            if (productDoc.exists) {
-              const productStock = Number(productDoc.data()?.['totalStock'] ?? 0);
-              const productToDeduct = Math.max(0, Math.min(validItem.quantity, productStock));
-              if (productToDeduct > 0) {
+            if (!validItem.variantId) {
+              const productDoc = await transaction.get(productRef);
+              if (productDoc.exists) {
+                const pData = productDoc.data();
+                const currentStock = Number(pData?.['stock'] ?? pData?.['totalStock'] ?? 0);
+                if (currentStock < validItem.quantity) {
+                  shortfall.push(
+                    `${validItem.productName || validItem.productId} (producto, faltan ${validItem.quantity - Math.max(0, currentStock)})`,
+                  );
+                }
                 transaction.update(productRef, {
-                  totalStock: FieldValue.increment(-productToDeduct),
+                  stock: FieldValue.increment(-validItem.quantity),
+                  totalStock: FieldValue.increment(-validItem.quantity),
                 });
               }
-              if (productToDeduct < validItem.quantity) {
-                shortfall.push(
-                  `${validItem.productName || validItem.productId} (producto, faltan ${validItem.quantity - productToDeduct})`,
-                );
+            } else {
+              const variantRef = productRef
+                .collection('variants')
+                .doc(validItem.variantId);
+
+              const [productDoc, variantDoc] = await Promise.all([
+                transaction.get(productRef),
+                transaction.get(variantRef),
+              ]);
+
+              if (variantDoc.exists) {
+                const variantStock = Number(variantDoc.data()?.['stock'] ?? 0);
+                const variantToDeduct = Math.max(0, Math.min(validItem.quantity, variantStock));
+                if (variantToDeduct > 0) {
+                  transaction.update(variantRef, {
+                    stock: FieldValue.increment(-variantToDeduct),
+                  });
+                }
+                if (variantToDeduct < validItem.quantity) {
+                  shortfall.push(
+                    `${validItem.productName || validItem.variantId} (variante, faltan ${validItem.quantity - variantToDeduct})`,
+                  );
+                }
+              }
+              if (productDoc.exists) {
+                const productStock = Number(productDoc.data()?.['totalStock'] ?? 0);
+                const productToDeduct = Math.max(0, Math.min(validItem.quantity, productStock));
+                if (productToDeduct > 0) {
+                  transaction.update(productRef, {
+                    totalStock: FieldValue.increment(-productToDeduct),
+                  });
+                }
+                if (productToDeduct < validItem.quantity) {
+                  shortfall.push(
+                    `${validItem.productName || validItem.productId} (producto, faltan ${validItem.quantity - productToDeduct})`,
+                  );
+                }
               }
             }
           }
@@ -929,17 +959,24 @@ export const executeStockAndMetricsRestorationAdmin = onCall(
 
         for (const it of items) {
           const productId = it.productId;
-          const variantId = it.variantId || 'default';
+          const variantId = it.variantId || null;
           const qty = Number(it.quantity || 0);
           if (!productId || qty <= 0) continue;
           const productRef = tenantDb.collection(collectionPath(COLLECTIONS.PRODUCTS)).doc(productId);
-          const variantRef = productRef.collection('variants').doc(variantId);
-          const [pDoc, vDoc] = await Promise.all([tx.get(productRef), tx.get(variantRef)]);
-          if (vDoc.exists) {
-            tx.update(variantRef, { stock: FieldValue.increment(qty) });
-          }
-          if (pDoc.exists) {
-            tx.update(productRef, { totalStock: FieldValue.increment(qty) });
+          if (!variantId) {
+            tx.update(productRef, {
+              stock: FieldValue.increment(qty),
+              totalStock: FieldValue.increment(qty),
+            });
+          } else {
+            const variantRef = productRef.collection('variants').doc(variantId);
+            const [pDoc, vDoc] = await Promise.all([tx.get(productRef), tx.get(variantRef)]);
+            if (vDoc.exists) {
+              tx.update(variantRef, { stock: FieldValue.increment(qty) });
+            }
+            if (pDoc.exists) {
+              tx.update(productRef, { totalStock: FieldValue.increment(qty) });
+            }
           }
         }
         tx.update(doc.ref, {

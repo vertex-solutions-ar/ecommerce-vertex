@@ -23,7 +23,7 @@ export type OrderDeliverySelection = z.infer<typeof OrderDeliverySelectionSchema
 
 export const OrderItemSchema = z.object({
   productId: z.string(),
-  variantId: z.string(),
+  variantId: z.string().nullable().optional(),
   productName: z.string(),
   quantity: z.number(),
   price: z.number(),

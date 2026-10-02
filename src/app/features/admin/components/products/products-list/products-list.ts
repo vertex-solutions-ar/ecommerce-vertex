@@ -16,6 +16,12 @@ import type { Category } from '@core/models/category.model';
 import { AdminSearchBar } from '@shared/components/admin-search-bar/admin-search-bar';
 import { AdminPagination } from '@shared/components/admin-pagination/admin-pagination';
 
+export type CatalogDensity = 'compact' | 'comfortable' | 'list';
+export const ALLOWED_PAGE_SIZES = [12, 24, 48] as const;
+export type AllowedPageSize = (typeof ALLOWED_PAGE_SIZES)[number];
+export const STORAGE_KEY_PAGE_SIZE = 'admin_catalog_page_size';
+export const DEFAULT_PAGE_SIZE: AllowedPageSize = 12;
+
 @Component({
   selector: 'app-products-list',
   templateUrl: './products-list.html',
@@ -34,6 +40,7 @@ import { AdminPagination } from '@shared/components/admin-pagination/admin-pagin
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProductsList implements OnInit {
+  readonly densityMode = signal<CatalogDensity>(this.getInitialDensity());
   products$!: Observable<Product[]>;
   private rawProducts$ = new BehaviorSubject<Product[]>([]);
   readonly isLoading = signal<boolean>(true);
@@ -50,7 +57,7 @@ export class ProductsList implements OnInit {
   private categoriesMap: Map<string, string> = new Map();
 
   currentPageSubject = new BehaviorSubject<number>(1);
-  itemsPerPageSubject = new BehaviorSubject<number>(12);
+  itemsPerPageSubject = new BehaviorSubject<number>(this.getInitialPageSize());
 
   totalProducts = 0;
   totalPages = 0;
@@ -128,6 +135,7 @@ export class ProductsList implements OnInit {
   onPageSizeChange(newSize: number): void {
     this.itemsPerPageSubject.next(newSize);
     this.currentPageSubject.next(1);
+    this.savePageSize(newSize);
   }
 
   goToPage(page: number): void {
@@ -185,6 +193,58 @@ export class ProductsList implements OnInit {
   goToDetail(productId: string | undefined): void {
     if (productId) {
       void this.router.navigate(['/admin/products', productId]);
+    }
+  }
+
+  setDensity(mode: CatalogDensity): void {
+    this.densityMode.set(mode);
+    if (typeof window !== 'undefined' && !!window.localStorage) {
+      try {
+        window.localStorage.setItem('admin_catalog_density', mode);
+      } catch (error) {
+        console.warn('Could not save admin_catalog_density to localStorage:', error);
+      }
+    }
+  }
+
+  private getInitialDensity(): CatalogDensity {
+    if (typeof window !== 'undefined' && !!window.localStorage) {
+      try {
+        const saved = window.localStorage.getItem('admin_catalog_density');
+        if (saved === 'compact' || saved === 'comfortable' || saved === 'list') {
+          return saved;
+        }
+      } catch (error) {
+        console.warn('Could not read admin_catalog_density from localStorage:', error);
+      }
+    }
+    return 'comfortable';
+  }
+
+  private getInitialPageSize(): number {
+    if (typeof window !== 'undefined' && !!window.localStorage) {
+      try {
+        const saved = window.localStorage.getItem(STORAGE_KEY_PAGE_SIZE);
+        if (saved) {
+          const parsed = parseInt(saved, 10);
+          if (ALLOWED_PAGE_SIZES.includes(parsed as AllowedPageSize)) {
+            return parsed;
+          }
+        }
+      } catch (error) {
+        console.warn('Could not read admin_catalog_page_size from localStorage:', error);
+      }
+    }
+    return DEFAULT_PAGE_SIZE;
+  }
+
+  private savePageSize(size: number): void {
+    if (typeof window !== 'undefined' && !!window.localStorage) {
+      try {
+        window.localStorage.setItem(STORAGE_KEY_PAGE_SIZE, size.toString());
+      } catch (error) {
+        console.warn('Could not save admin_catalog_page_size to localStorage:', error);
+      }
     }
   }
 }

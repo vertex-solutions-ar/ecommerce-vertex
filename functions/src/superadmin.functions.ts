@@ -128,13 +128,20 @@ export const adminDeleteOrder = onCall<{
           if (!parsed.success) continue;
           const it = parsed.data;
           const productRef = tenantDb.collection(collectionPath(COLLECTIONS.PRODUCTS)).doc(it.productId);
-          const variantRef = productRef.collection('variants').doc(it.variantId);
-          const [pDoc, vDoc] = await Promise.all([tx.get(productRef), tx.get(variantRef)]);
-          if (vDoc.exists) {
-            tx.update(variantRef, { stock: FieldValue.increment(it.quantity) });
-          }
-          if (pDoc.exists) {
-            tx.update(productRef, { totalStock: FieldValue.increment(it.quantity) });
+          if (!it.variantId) {
+            tx.update(productRef, {
+              stock: FieldValue.increment(it.quantity),
+              totalStock: FieldValue.increment(it.quantity),
+            });
+          } else {
+            const variantRef = productRef.collection('variants').doc(it.variantId);
+            const [pDoc, vDoc] = await Promise.all([tx.get(productRef), tx.get(variantRef)]);
+            if (vDoc.exists) {
+              tx.update(variantRef, { stock: FieldValue.increment(it.quantity) });
+            }
+            if (pDoc.exists) {
+              tx.update(productRef, { totalStock: FieldValue.increment(it.quantity) });
+            }
           }
           restored += it.quantity;
         }

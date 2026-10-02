@@ -90,48 +90,53 @@ export class CartService {
       .join(' / ');
   }
 
-  addItem(product: Product, variant: ProductVariant, quantity: number): void {
-    if (quantity > variant.stock) {
+  addItem(product: Product, variant: ProductVariant | null | undefined, quantity: number): void {
+    const availableStock = variant ? variant.stock : (product.stock ?? product.totalStock ?? 0);
+
+    if (quantity > availableStock) {
       this.sweetAlertService.error(
         'Stock insuficiente',
-        `No puedes añadir ${quantity}. Stock disponible: ${variant.stock}.`,
+        `No puedes añadir ${quantity}. Stock disponible: ${availableStock}.`,
       );
       return;
     }
 
-    const cartItemId = variant.id;
+    const cartItemId = variant ? variant.id : product.id;
 
     this.cart.update((currentCart) => {
-      const existingItem = currentCart.items.find((item) => item.id === cartItemId);
+      const existingItem = currentCart.items.find(
+        (item) =>
+          item.productId === product.id && (item.variantId ?? null) === (variant?.id ?? null),
+      );
       let newItems: CartItem[];
 
       if (existingItem) {
         const newQuantity = existingItem.quantity + quantity;
-        if (newQuantity > variant.stock) {
+        if (newQuantity > availableStock) {
           this.sweetAlertService.error(
             'Stock insuficiente',
-            `No puedes añadir más. Stock disponible: ${variant.stock}.`,
+            `No puedes añadir más. Stock disponible: ${availableStock}.`,
           );
           return currentCart;
         }
         newItems = currentCart.items.map((item) =>
-          item.id === cartItemId ? { ...item, quantity: newQuantity } : item,
+          item === existingItem ? { ...item, quantity: newQuantity } : item,
         );
       } else {
-        const variantDescription = this.getVariantDescription(variant.attributes);
+        const variantDescription = variant ? this.getVariantDescription(variant.attributes) : '';
         const itemName = variantDescription
           ? `${product.name} (${variantDescription})`
           : product.name;
         const newItem: CartItem = {
           id: cartItemId,
           productId: product.id,
-          variantId: variant.id,
+          variantId: variant?.id ?? null,
           name: itemName,
           price: product.price,
           quantity,
-          image: variant.image ?? product.image,
-          attributes: variant.attributes ?? {},
-          stock: variant.stock,
+          image: variant?.image ?? product.image,
+          attributes: variant?.attributes ?? {},
+          stock: availableStock,
         };
         newItems = [...currentCart.items, newItem];
       }

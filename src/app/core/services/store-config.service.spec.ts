@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { StoreConfigService } from './store-config.service';
+import { Meta } from '@angular/platform-browser';
 import { Firestore } from '@angular/fire/firestore';
 import type { DocumentReference, DocumentSnapshot } from '@angular/fire/firestore';
 import type {
@@ -319,5 +320,46 @@ describe('StoreConfigService', () => {
 
     expect(getDocRefSpy).toHaveBeenCalledWith('configuracion', jasmine.stringMatching(/^store_/));
     expect(service.storeConfig()).toBeNull();
+  });
+
+  it('should synchronize Open Graph and Twitter Card tags via updateSeoTags', () => {
+    const metaService = TestBed.inject(Meta);
+    spyOn(metaService, 'updateTag');
+
+    service.updateSeoTags({
+      storeName: 'Mi Tienda Especial',
+      tagline: 'Lo mejor en tecnología',
+      logoUrl: 'https://img.png',
+      seo: { metaDescription: 'Descripción de prueba' },
+    } as unknown as StoreConfig);
+
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      name: 'description',
+      content: 'Lo mejor en tecnología',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      property: 'og:site_name',
+      content: 'Mi Tienda Especial',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      property: 'og:title',
+      content: 'Mi Tienda Especial',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      property: 'og:description',
+      content: 'Lo mejor en tecnología',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      property: 'og:image',
+      content: 'https://img.png',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      name: 'twitter:card',
+      content: 'summary_large_image',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      name: 'twitter:title',
+      content: 'Mi Tienda Especial',
+    });
   });
 });

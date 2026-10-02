@@ -45,10 +45,8 @@ export class StoreConfigService {
     effect(() => {
       const config = this.storeConfig();
       if (config) {
-        // 1b. SEO Meta Description reactivity
-        if (config.seo?.metaDescription) {
-          this.metaService.updateTag({ name: 'description', content: config.seo.metaDescription });
-        }
+        // 1b. SEO, Open Graph and Twitter Card metadata reactivity
+        this.updateSeoTags(config);
 
         // 2. Favicon reactivity
         if (config.faviconUrl) {
@@ -242,10 +240,48 @@ export class StoreConfigService {
     });
   }
 
-  private applyConfigToDom(config: StoreConfig): void {
-    if (config.seo?.metaDescription) {
-      this.metaService.updateTag({ name: 'description', content: config.seo.metaDescription });
+  /**
+   * Synchronizes Open Graph, Twitter Card, and Meta tags with store configuration
+   * for client-side runtime browser updates.
+   */
+  updateSeoTags(config: StoreConfig): void {
+    const storeName = config.storeName ?? 'Mi Tienda';
+    const description = config.tagline ? config.tagline : (config.seo?.metaDescription ?? '');
+    const imageUrl = config.logoUrl ?? '';
+    const currentUrl =
+      typeof window !== 'undefined' && window.location?.href ? window.location.href : '';
+
+    if (description) {
+      this.metaService.updateTag({ name: 'description', content: description });
     }
+
+    this.metaService.updateTag({ property: 'og:site_name', content: storeName });
+    this.metaService.updateTag({ property: 'og:title', content: storeName });
+    this.metaService.updateTag({ property: 'og:type', content: 'website' });
+
+    if (description) {
+      this.metaService.updateTag({ property: 'og:description', content: description });
+    }
+    if (imageUrl) {
+      this.metaService.updateTag({ property: 'og:image', content: imageUrl });
+      this.metaService.updateTag({ property: 'og:image:secure_url', content: imageUrl });
+    }
+    if (currentUrl) {
+      this.metaService.updateTag({ property: 'og:url', content: currentUrl });
+    }
+
+    this.metaService.updateTag({ name: 'twitter:card', content: 'summary_large_image' });
+    this.metaService.updateTag({ name: 'twitter:title', content: storeName });
+    if (description) {
+      this.metaService.updateTag({ name: 'twitter:description', content: description });
+    }
+    if (imageUrl) {
+      this.metaService.updateTag({ name: 'twitter:image', content: imageUrl });
+    }
+  }
+
+  private applyConfigToDom(config: StoreConfig): void {
+    this.updateSeoTags(config);
     if (config.faviconUrl) {
       let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
       if (!link) {

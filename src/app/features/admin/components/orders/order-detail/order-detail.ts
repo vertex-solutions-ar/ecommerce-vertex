@@ -1,4 +1,4 @@
-import type { OnInit } from '@angular/core';
+import type { OnInit, Signal } from '@angular/core';
 import { Component, inject } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe, TitleCasePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -35,7 +35,7 @@ export class OrderDetail implements OnInit {
   private orderService = inject(OrderService);
   private authService = inject(AuthService);
 
-  readonly isStaff = this.authService.isStaff;
+  readonly isStaff: Signal<boolean> = this.authService.isStaff;
 
   showReceipt = false;
   receiptOrder: Order | undefined;

@@ -1,6 +1,7 @@
 import {
   Component,
   inject,
+  ViewChild,
   ViewChildren,
   DestroyRef,
   ChangeDetectorRef,
@@ -29,6 +30,7 @@ import type { Category } from '@core/models/category.model';
 import { SweetAlertService } from '@core/services/sweet-alert.service';
 import { AttributeService } from '@core/services/attribute.service';
 import type { Attribute } from '@core/models/attribute.model';
+import type { WithFieldValue } from '@angular/fire/firestore';
 import { ProductVariantFormService, type ProductFormValue } from './product-variant-form.service';
 import { ProductMediaService } from './product-media.service';
 
@@ -54,6 +56,7 @@ export class ProductCreate implements OnInit, AfterViewInit {
   private focusNewImage = false;
   private focusNewVariant = false;
 
+  @ViewChild('stockInput') stockInput?: ElementRef<HTMLInputElement>;
   @ViewChildren('galleryInput') galleryInputs!: QueryList<ElementRef<HTMLInputElement>>;
   @ViewChildren('variantSelect') variantSelects!: QueryList<ElementRef<HTMLSelectElement>>;
   @ViewChildren('variantStock') variantStocks!: QueryList<ElementRef<HTMLInputElement>>;
@@ -136,6 +139,15 @@ export class ProductCreate implements OnInit, AfterViewInit {
     return this.productForm.get('variantAttributes') as FormArray;
   }
 
+  onHasAttributesChange(): void {
+    const hasAttr = Boolean(this.productForm.get('hasAttributes')?.value);
+    this.variantFormService.updateStockValidators(this.productForm, hasAttr);
+    if (!hasAttr) {
+      setTimeout(() => this.stockInput?.nativeElement.focus(), 0);
+    }
+    this.cdr.markForCheck();
+  }
+
   ngOnInit(): void {
     this.categories$ = this.categoryService.getCategories();
     this.attributeService
@@ -152,6 +164,16 @@ export class ProductCreate implements OnInit, AfterViewInit {
         this.cdr.markForCheck();
       });
     this.productForm = this.variantFormService.createProductForm();
+    this.productForm
+      .get('hasAttributes')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((hasAttr: boolean) => {
+        this.variantFormService.updateStockValidators(this.productForm, hasAttr);
+        if (!hasAttr) {
+          setTimeout(() => this.stockInput?.nativeElement.focus(), 0);
+        }
+        this.cdr.markForCheck();
+      });
     this.onAttributeSelectionChange();
     this.checkEditMode();
   }
@@ -398,21 +420,46 @@ export class ProductCreate implements OnInit, AfterViewInit {
       this.sweetAlertService.error('Formulario Inválido', 'Revisa todos los campos.');
       return;
     }
-    this.isSubmitting = true;
+
     const formValue = this.productForm.getRawValue() as ProductFormValue;
-    const totalStock = (formValue.variants || []).reduce(
-      (sum, v) => sum + (Number(v.stock) || 0),
-      0,
-    );
+    const hasAttributes = Boolean(formValue.hasAttributes);
+
+    if (hasAttributes && (!formValue.variants || formValue.variants.length === 0)) {
+      this.sweetAlertService.error(
+        'Variantes Requeridas',
+        'Debes añadir al menos una variante o desactivar la opción de variantes.',
+      );
+      return;
+    }
+
+    this.isSubmitting = true;
+    const stockVal = Number(formValue.stock) || 0;
+    const totalStock = hasAttributes
+      ? (formValue.variants || []).reduce((sum, v) => sum + (Number(v.stock) || 0), 0)
+      : stockVal;
+
     try {
       if (this.isEditMode && this.productId) {
-        const { toUpdate, toAdd, toDelete } = this.variantFormService.buildEditChanges(
-          formValue.variants,
-          this.initialVariants,
-          formValue.price,
-        );
-        const { name, description, price, categoryId, image, images, variantAttributes } =
-          formValue;
+        let toUpdate: (Partial<ProductVariant> & { id: string })[] = [];
+        let toAdd: WithFieldValue<Omit<ProductVariant, 'id' | 'productId'>>[] = [];
+        let toDelete: string[] = [];
+
+        if (hasAttributes) {
+          const editChanges = this.variantFormService.buildEditChanges(
+            formValue.variants,
+            this.initialVariants,
+            formValue.price,
+          );
+          toUpdate = editChanges.toUpdate;
+          toAdd = editChanges.toAdd;
+          toDelete = editChanges.toDelete;
+        } else {
+          toDelete = this.initialVariants.map((iv) => iv.id);
+        }
+
+        const { name, description, price, categoryId, image, images } = formValue;
+        const variantAttributes = hasAttributes ? (formValue.variantAttributes ?? []) : [];
+
         await this.productService.updateProductWithVariants(
           this.productId,
           {
@@ -423,6 +470,8 @@ export class ProductCreate implements OnInit, AfterViewInit {
             image,
             images,
             variantAttributes,
+            hasAttributes,
+            stock: hasAttributes ? undefined : stockVal,
             totalStock,
           },
           toUpdate,
@@ -434,12 +483,12 @@ export class ProductCreate implements OnInit, AfterViewInit {
       } else {
         const productData = this.variantFormService.buildProductData(formValue);
         const variantsData =
-          formValue.variants && formValue.variants.length > 0
+          hasAttributes && formValue.variants && formValue.variants.length > 0
             ? formValue.variants.map((v) => ({
                 attributes: v.attributes ?? {},
                 stock: Number(v.stock) || 0,
               }))
-            : [{ attributes: {}, stock: 99 }];
+            : [];
         const newId = await this.productService.createProductWithVariants(
           productData,
           variantsData,
@@ -457,8 +506,8 @@ export class ProductCreate implements OnInit, AfterViewInit {
   }
 
   onCancel(): void {
-    void this.router.navigate(
-      this.isEditMode && this.productId ? ['/admin/products', this.productId] : ['/admin/products'],
-    );
+    const target =
+      this.isEditMode && this.productId ? ['/admin/products', this.productId] : ['/admin/products'];
+    void this.router.navigate(target);
   }
 }

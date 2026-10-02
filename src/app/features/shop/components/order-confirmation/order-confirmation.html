@@ -34,7 +34,7 @@
           <p class="confirmation__order-id">
             <strong>Número de Pedido:</strong> {{ data.order.id }}
           </p>
-          @for (item of data.order.items; track item.variantId) {
+          @for (item of data.order.items; track item.variantId || item.productId || $index) {
             <div class="confirmation__item">
               <span class="confirmation__item-name"
                 >{{ item.productName }} (x{{ item.quantity }})</span
@@ -172,7 +172,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (item of data.order.items; track item.variantId) {
+            @for (item of data.order.items; track item.variantId || item.productId || $index) {
               <tr>
                 <td>{{ item.productName }}</td>
                 <td class="text-center">{{ item.quantity }}</td>

@@ -88,7 +88,7 @@ jobs:
           curl -s -X POST \
             -H "Authorization: token $PLATFORM_DISPATCH_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/Vertex-Tech-Devs/vertex-platform/dispatches" \
+            "https://api.github.com/repos/vertex-solutions-ar/vertex-platform/dispatches" \
             -d "{\"event_type\": \"storefront-release\", \"client_payload\": {\"version\": \"$VERSION\", \"tag\": \"v$VERSION\"}}"
           echo "✅ Notified vertex-platform of storefront release v$VERSION"
 
@@ -96,5 +96,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh workflow run "Deploy All Stores" --repo Vertex-Tech-Devs/ecommerce-vertex --ref main
+          gh workflow run "Deploy All Stores" --repo vertex-solutions-ar/ecommerce-vertex --ref main
           echo "✅ Triggered Deploy All Stores for release v${{ needs.validate-tag-source.outputs.version }}"

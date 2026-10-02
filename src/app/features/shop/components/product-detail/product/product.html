@@ -26,26 +26,38 @@
           <p class="product-info__price">{{ p.price | currency: 'ARS' : '$' }}</p>
           <p class="product-info__description">{{ p.description }}</p>
 
-          @for (attr of attributes(); track attr.id + '_' + $index) {
-            <div class="variant-selector">
-              <label class="variant-selector__label">{{ attr.name }}:</label>
-              <div class="variant-selector__options">
-                @for (value of getValuesForAttribute(attr); track value + '_' + $index) {
-                  @if (isOptionVisible(attr.id, value)) {
-                    <button
-                      class="variant-selector__btn"
-                      [class.variant-selector__btn--active]="value === attr.selectedValue"
-                      (click)="selectAttribute(attr.id, value)"
-                    >
-                      {{ value }}
-                    </button>
+          @if (!isSimpleProduct()) {
+            @for (attr of attributes(); track attr.id + '_' + $index) {
+              <div class="variant-selector">
+                <label class="variant-selector__label">{{ attr.name }}:</label>
+                <div class="variant-selector__options">
+                  @for (value of getValuesForAttribute(attr); track value + '_' + $index) {
+                    @if (isOptionVisible(attr.id, value)) {
+                      <button
+                        class="variant-selector__btn"
+                        [class.variant-selector__btn--active]="value === attr.selectedValue"
+                        (click)="selectAttribute(attr.id, value)"
+                      >
+                        {{ value }}
+                      </button>
+                    }
                   }
-                }
+                </div>
               </div>
-            </div>
+            }
           }
 
-          @if (selectedVariant() !== undefined) {
+          @if (isSimpleProduct()) {
+            <div class="stock-badge" role="status">
+              @if (!isOutOfStock()) {
+                <span class="stock-badge--available">
+                  ¡Disponible! (Quedan {{ maxAvailableStock() }} unidades)
+                </span>
+              } @else {
+                <span class="stock-badge--unavailable">Agotado</span>
+              }
+            </div>
+          } @else if (selectedVariant() !== undefined) {
             <div class="stock-badge" role="status">
               @if (selectedVariant(); as variant) {
                 @if (variant.stock > 0) {
@@ -66,7 +78,7 @@
               <button
                 class="quantity-picker__btn"
                 (click)="decreaseQuantity()"
-                [disabled]="quantity() <= 1"
+                [disabled]="isOutOfStock() || quantity() <= 1"
                 aria-label="Disminuir cantidad"
               >
                 −
@@ -75,7 +87,7 @@
               <button
                 class="quantity-picker__btn"
                 (click)="increaseQuantity()"
-                [disabled]="isMaxQuantityReached"
+                [disabled]="isOutOfStock() || isMaxQuantityReached"
                 aria-label="Aumentar cantidad"
               >
                 +
@@ -85,14 +97,17 @@
             <button
               class="add-to-cart"
               (click)="addToCart()"
-              [disabled]="!selectedVariant() || selectedVariant()?.stock === 0"
+              [disabled]="
+                isOutOfStock() ||
+                (!isSimpleProduct() && (!selectedVariant() || selectedVariant()?.stock === 0))
+              "
             >
-              @if (selectedVariant() === undefined) {
+              @if (isOutOfStock()) {
+                <span>Sin Stock</span>
+              } @else if (!isSimpleProduct() && selectedVariant() === undefined) {
                 <span>Selecciona una variante</span>
-              } @else if (!selectedVariant()) {
+              } @else if (!isSimpleProduct() && !selectedVariant()) {
                 <span>No disponible</span>
-              } @else if (selectedVariant()?.stock === 0) {
-                <span>Agotado</span>
               } @else {
                 <span>Añadir al Carrito</span>
               }

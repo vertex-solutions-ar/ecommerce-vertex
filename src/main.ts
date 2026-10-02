@@ -8,14 +8,22 @@ import { STORE_CONFIG } from './environments/store.config';
 
 import { resolveTenantId } from './app/core/utils/tenant';
 import { version as pkgVersion } from '../package.json';
+import { BUILD_INFO } from './environments/build-info';
 
-// 0. Versión del build (desde package.json del tag compilado — sin drift).
-//    Expuesta para verificación: console (una vez), window global y <meta>.
+// 0. Versión y estampado del build (build stamping con trazabilidad absoluta).
+//    Expuesta para verificación: console estilizado, window.__VERTEX_BUILD__ y <meta>.
 const APP_VERSION = `v${pkgVersion}`;
 try {
   // eslint-disable-next-line no-console
-  console.info(`[Vertex Storefront] ${APP_VERSION}`);
+  console.log(
+    `%c🚀 VERTEX STOREFRONT | v${BUILD_INFO.version} (${BUILD_INFO.commitSha}) | Deployed: ${BUILD_INFO.timestamp}`,
+    'background: #111827; color: #10b981; font-weight: bold; padding: 4px 8px; border-radius: 4px;',
+  );
   (globalThis as Record<string, unknown>)['__VERTEX_STORE_VERSION__'] = APP_VERSION;
+  (globalThis as Record<string, unknown>)['__VERTEX_BUILD__'] = BUILD_INFO;
+  if (typeof window !== 'undefined') {
+    (window as unknown as { __VERTEX_BUILD__?: typeof BUILD_INFO }).__VERTEX_BUILD__ = BUILD_INFO;
+  }
   const meta = document.createElement('meta');
   meta.name = 'app-version';
   meta.content = APP_VERSION;

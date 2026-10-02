@@ -446,4 +446,51 @@ describe('CartService', () => {
       expect(service.cart().items.length).toBe(1);
     }));
   });
+
+  describe('Simple products support (ticket #497)', () => {
+    it('should add a simple product without variant assigning stock and null variantId', () => {
+      const simpleProd = makeProduct({
+        id: 'prod-simple-1',
+        name: 'Libro',
+        stock: 12,
+        totalStock: 12,
+      });
+      service.addItem(simpleProd, null, 2);
+
+      const cartItems = service.cart().items;
+      expect(cartItems.length).toBe(1);
+      expect(cartItems[0].id).toBe('prod-simple-1');
+      expect(cartItems[0].productId).toBe('prod-simple-1');
+      expect(cartItems[0].variantId).toBeNull();
+      expect(cartItems[0].quantity).toBe(2);
+      expect(cartItems[0].stock).toBe(12);
+      expect(cartItems[0].name).toBe('Libro');
+    });
+
+    it('should merge quantity when adding duplicate simple product without variant', () => {
+      const simpleProd = makeProduct({
+        id: 'prod-simple-2',
+        name: 'Vela',
+        stock: 10,
+        totalStock: 10,
+      });
+      service.addItem(simpleProd, null, 2);
+      service.addItem(simpleProd, null, 3);
+
+      const cartItems = service.cart().items;
+      expect(cartItems.length).toBe(1);
+      expect(cartItems[0].quantity).toBe(5);
+    });
+
+    it('should reject addition when quantity exceeds simple product stock', () => {
+      const simpleProd = makeProduct({ id: 'prod-simple-3', stock: 3, totalStock: 3 });
+      service.addItem(simpleProd, null, 4);
+
+      expect(service.cart().items.length).toBe(0);
+      expect(sweetAlertSpy.error).toHaveBeenCalledWith(
+        'Stock insuficiente',
+        'No puedes añadir 4. Stock disponible: 3.',
+      );
+    });
+  });
 });

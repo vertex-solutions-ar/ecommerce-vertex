@@ -17,6 +17,7 @@ const mockProductWithVariants: ProductModel = {
   categoryId: 'cat-1',
   image: 'https://example.com/remera.jpg',
   images: ['https://example.com/remera-back.jpg'],
+  hasAttributes: true,
   variantAttributes: ['attr-color', 'attr-talle'],
   totalStock: 15,
   inStockAttributes: {},
@@ -48,21 +49,13 @@ const mockSimpleProduct: ProductModel = {
   categoryId: 'cat-books',
   image: 'https://example.com/libro.jpg',
   images: [],
-  variantAttributes: [],
+  hasAttributes: false,
+  stock: 8,
   totalStock: 8,
+  variantAttributes: [],
   inStockAttributes: {},
   createdAt: new Date(),
 };
-
-const mockSimpleVariants: ProductVariant[] = [
-  {
-    id: 'var-simple-1',
-    productId: 'prod-simple-1',
-    sku: 'LIB-001',
-    stock: 8,
-    attributes: {},
-  },
-];
 
 const mockAttributes: Attribute[] = [
   { id: 'attr-color', name: 'Color', values: ['Rojo', 'Azul'] },
@@ -189,23 +182,22 @@ describe('Product Component (Storefront)', () => {
 
   describe('Simple products without attributes', () => {
     beforeEach(() => {
-      setupTestBed({ product: mockSimpleProduct, variants: mockSimpleVariants });
+      setupTestBed({ product: mockSimpleProduct, variants: [] });
     });
 
-    it('should automatically select the default base variant without requiring attribute selection', () => {
+    it('should identify simple product and not require attribute selection or variant', () => {
       expect(component).toBeTruthy();
       expect(component.product()?.name).toBe('Libro de Diseño Web');
+      expect(component.isSimpleProduct()).toBeTrue();
       expect(component.attributes().length).toBe(0);
-      expect(component.selectedVariant()?.id).toBe('var-simple-1');
+      expect(component.selectedVariant()).toBeNull();
+      expect(component.maxAvailableStock()).toBe(8);
+      expect(component.isOutOfStock()).toBeFalse();
     });
 
-    it('should allow immediate addition to cart for simple products', () => {
+    it('should allow immediate addition to cart for simple products with null variant', () => {
       component.addToCart();
-      expect(cartServiceSpy.addItem).toHaveBeenCalledWith(
-        mockSimpleProduct,
-        mockSimpleVariants[0],
-        1,
-      );
+      expect(cartServiceSpy.addItem).toHaveBeenCalledWith(mockSimpleProduct, null, 1);
     });
 
     it('should respect quantity increment and decrement', () => {
@@ -221,12 +213,25 @@ describe('Product Component (Storefront)', () => {
   });
 
   describe('Fallback and Edge Cases', () => {
-    it('should create default synthetic variant if simple product has empty variants array', () => {
+    it('should treat simple product without variants as simple product with direct stock', () => {
       setupTestBed({ product: mockSimpleProduct, variants: [] });
 
-      expect(component.selectedVariant()?.id).toBe('default');
-      expect(component.selectedVariant()?.sku).toBe('prod-simple-1-BASE');
-      expect(component.selectedVariant()?.stock).toBe(8);
+      expect(component.isSimpleProduct()).toBeTrue();
+      expect(component.selectedVariant()).toBeNull();
+      expect(component.maxAvailableStock()).toBe(8);
+      expect(component.isOutOfStock()).toBeFalse();
+    });
+
+    it('should treat legacy product as simple product when hasAttributes is undefined and variants is empty', () => {
+      const legacyProduct: ProductModel = {
+        ...mockSimpleProduct,
+        hasAttributes: undefined,
+      };
+      setupTestBed({ product: legacyProduct, variants: [] });
+
+      expect(component.isSimpleProduct()).toBeTrue();
+      expect(component.selectedVariant()).toBeNull();
+      expect(component.maxAvailableStock()).toBe(8);
     });
 
     it('should handle route with missing id parameter', () => {
@@ -285,7 +290,7 @@ describe('Product Component (Storefront)', () => {
       expect(component.isOptionVisible('attr-color', 'Verde')).toBeFalse();
     });
 
-    it('addToCart should not call cartService.addItem if product or variant is missing', () => {
+    it('addToCart should not call cartService.addItem if product with variants has no selected variant', () => {
       setupTestBed({ product: mockProductWithVariants, variants: mockVariants });
       component.selectedVariant.set(undefined);
       cartServiceSpy.addItem.calls.reset();

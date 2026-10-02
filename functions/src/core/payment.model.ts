@@ -24,7 +24,7 @@ export const PaymentRequestSchema = z.object({
     .array(
       z.object({
         productId: z.string().min(1),
-        variantId: z.string().min(1),
+        variantId: z.string().nullable().optional(),
         title: z.string(),
         quantity: z.number().positive(),
         unit_price: z.number().nonnegative(),

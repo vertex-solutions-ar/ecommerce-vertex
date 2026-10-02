@@ -12,6 +12,7 @@
             [interval]="banner.carouselSettings?.interval || 6000"
             [showIndicators]="banner.carouselSettings?.showIndicators !== false"
             [showArrows]="true"
+            [pauseOnHover]="false"
           ></app-carousel>
         } @else {
           <div class="hero__static">
@@ -25,6 +26,13 @@
           </div>
         }
       </section>
+    }
+
+    @if (banner.featuredProducts?.enabled && featuredProducts().length > 0) {
+      <app-featured-slider
+        [title]="banner.featuredProducts?.title || 'Destacados'"
+        [products]="featuredProducts()"
+      ></app-featured-slider>
     }
 
     @if (banner.featuredCategories && banner.featuredCategories.length > 0) {

@@ -12,7 +12,7 @@ export interface OrderDeliverySelection {
 
 export interface OrderItem {
   productId: string;
-  variantId: string;
+  variantId?: string | null;
   productName: string;
   quantity: number;
   price: number;

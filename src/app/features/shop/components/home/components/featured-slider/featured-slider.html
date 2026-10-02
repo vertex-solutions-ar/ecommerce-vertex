@@ -1,0 +1,74 @@
+@if (hasProducts()) {
+  <section class="featured-slider" aria-label="Productos destacados">
+    <div class="home-container">
+      <div class="featured-slider__header">
+        <h2 class="featured-slider__title">{{ title() }}</h2>
+      </div>
+    </div>
+
+    <div
+      class="marquee"
+      [style.--marquee-duration]="animationDuration()"
+      aria-label="Carrusel de productos destacados"
+    >
+      <div class="marquee__track">
+        <!-- Grupo principal accesible -->
+        <div class="marquee__group">
+          @for (product of displayProducts(); track $index) {
+            <a
+              [routerLink]="['/product', product.id]"
+              class="product-card marquee__item"
+              [attr.aria-label]="product.name"
+            >
+              <div class="product-card__image-wrap">
+                <span class="product-card__badge">DESTACADO</span>
+                <img
+                  [src]="product.image"
+                  [alt]="product.name"
+                  class="product-card__image"
+                  loading="lazy"
+                />
+              </div>
+              <div class="product-card__body">
+                <h3 class="product-card__name">{{ product.name }}</h3>
+                <p class="product-card__price">
+                  {{ product.price | currency: 'ARS' : '$' : '1.0-0' }}
+                </p>
+                <p class="product-card__shipping">Envío gratis</p>
+              </div>
+            </a>
+          }
+        </div>
+
+        <!-- Grupo duplicado continuo para GPU Marquee sin saltos visuales -->
+        <div class="marquee__group" aria-hidden="true">
+          @for (product of displayProducts(); track $index) {
+            <a
+              [routerLink]="['/product', product.id]"
+              class="product-card marquee__item"
+              tabindex="-1"
+              aria-hidden="true"
+            >
+              <div class="product-card__image-wrap">
+                <span class="product-card__badge">DESTACADO</span>
+                <img
+                  [src]="product.image"
+                  [alt]="product.name"
+                  class="product-card__image"
+                  loading="lazy"
+                />
+              </div>
+              <div class="product-card__body">
+                <h3 class="product-card__name">{{ product.name }}</h3>
+                <p class="product-card__price">
+                  {{ product.price | currency: 'ARS' : '$' : '1.0-0' }}
+                </p>
+                <p class="product-card__shipping">Envío gratis</p>
+              </div>
+            </a>
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+}

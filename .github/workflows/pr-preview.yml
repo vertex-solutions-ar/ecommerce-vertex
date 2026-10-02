@@ -1,0 +1,124 @@
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [develop, main]
+
+concurrency:
+  group: pr-preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  NODE_VERSION: '24'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  deploy-preview:
+    name: Deploy PR Preview Channel
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.fork == false
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+
+      - name: Check Firebase Service Account secret
+        id: check-secret
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
+        run: |
+          if [ -n "$SA" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::FIREBASE_SERVICE_ACCOUNT_DEV secret not available. Skipping preview deployment."
+          fi
+
+      - name: Build frontend for staging/preview
+        if: steps.check-secret.outputs.available == 'true'
+        run: |
+          npm run build:dev-template
+
+      - name: Pre-seed Firestore PR Tenant Data
+        if: steps.check-secret.outputs.available == 'true'
+        env:
+          FIREBASE_SERVICE_ACCOUNT_DEV: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
+          PR_NUMBER: ${{ github.event.number }}
+          NODE_PATH: functions/node_modules
+        run: |
+          npm --prefix functions install
+          npx tsx scripts/seed-pr-tenant.ts
+
+      - name: Deploy preview channel to Firebase Hosting
+        id: deploy-channel
+        if: steps.check-secret.outputs.available == 'true'
+        env:
+          FIREBASE_SERVICE_ACCOUNT_DEV: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT_DEV" > sa_key.json
+          GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/sa_key.json" npx firebase-tools hosting:channel:deploy pr-${{ github.event.number }} --project ecommerce-vertex-dev --expires 7d --json > deploy_output.json
+          rm -f sa_key.json
+
+          cat deploy_output.json
+          PREVIEW_URL=$(node -p "const data = JSON.parse(require('fs').readFileSync('deploy_output.json', 'utf8')); (data.result && (data.result['ecommerce-vertex'] || data.result['ecommerce-vertex-dev'])) ? (data.result['ecommerce-vertex'] || data.result['ecommerce-vertex-dev']).url : (data.result ? Object.values(data.result)[0]?.url : '')")
+          EXPIRE_TIME=$(node -p "const data = JSON.parse(require('fs').readFileSync('deploy_output.json', 'utf8')); (data.result && (data.result['ecommerce-vertex'] || data.result['ecommerce-vertex-dev'])) ? (data.result['ecommerce-vertex'] || data.result['ecommerce-vertex-dev']).expireTime : ''")
+          echo "url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+          echo "expire_time=$EXPIRE_TIME" >> "$GITHUB_OUTPUT"
+
+      - name: Comment PR Preview URL
+        if: steps.check-secret.outputs.available == 'true' && steps.deploy-channel.outputs.url != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            const previewUrl = '${{ steps.deploy-channel.outputs.url }}';
+            const expireTime = '${{ steps.deploy-channel.outputs.expire_time }}';
+            const commitSha = '${{ github.event.pull_request.head.sha }}'.substring(0, 7);
+
+            const botHeader = '### 🚀 Preview lista: [Ver tienda en vivo]';
+            const body = `${botHeader}(${previewUrl})\n\n` +
+              `| Atributo | Detalle |\n` +
+              `| :--- | :--- |\n` +
+              `| **Canal** | \`pr-${prNumber}\` |\n` +
+              `| **Commit** | \`${commitSha}\` |\n` +
+              `| **Expiración** | ${expireTime || '7 días'} |\n` +
+              `| **Tenant ID** | \`vtx-pr-${prNumber}\` (datos pre-sembrados) |\n\n` +
+              `> Los datos de prueba en Firestore y el canal de hosting se destruyen automáticamente al cerrar o mergear el PR.`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const botComment = comments.find(c => c.body && c.body.includes(botHeader));
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+              console.log('Updated existing PR preview comment:', botComment.id);
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+              console.log('Created new PR preview comment');
+            }

@@ -241,12 +241,30 @@ jobs:
 
       - name: Post-Deploy Health Check (Development)
         run: |
-          echo "Verificando respuesta del sitio desplegado (ecommerce-vertex-dev)..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://ecommerce-vertex-dev.web.app/shop)
-          if [ "$STATUS" -eq 200 ] || [ "$STATUS" -eq 304 ]; then
-            echo "✅ Storefront DEV responde correctamente (HTTP $STATUS)"
-          else
-            echo "❌ Falló verificación post-deploy en Storefront DEV (HTTP $STATUS)"
+          echo "Verificando propagación activa de versión en Storefront DEV..."
+          EXPECTED_SHA="${{ github.sha }}"
+          SHORT_SHA="${EXPECTED_SHA:0:7}"
+          SUCCESS=0
+
+          for i in $(seq 1 10); do
+            echo "Intento $i de 10: Consultando https://ecommerce-vertex-dev.web.app/assets/version.json?nocache=${EXPECTED_SHA} ..."
+            VERSION_RESP=$(curl -s "https://ecommerce-vertex-dev.web.app/assets/version.json?nocache=${EXPECTED_SHA}" || true)
+            DEPLOYED_SHA=$(echo "$VERSION_RESP" | jq -r '.commitSha // empty' 2>/dev/null || echo "")
+
+            if [ "$DEPLOYED_SHA" = "$EXPECTED_SHA" ] || [ "$DEPLOYED_SHA" = "$SHORT_SHA" ]; then
+              echo "✅ Verificación exitosa en Storefront DEV: commitSha coincide ($DEPLOYED_SHA)"
+              SUCCESS=1
+              break
+            else
+              echo "⏳ Commit SHA detectado: '$DEPLOYED_SHA' (esperado: '$SHORT_SHA' o '$EXPECTED_SHA'). Reintentando en 5s..."
+              sleep 5
+            fi
+          done
+
+          if [ "$SUCCESS" -ne 1 ]; then
+            echo "❌ ERROR: Timeout en propagación de CDN para Storefront DEV tras 10 intentos (50s)."
+            echo "Última respuesta recibida:"
+            echo "$VERSION_RESP"
             exit 1
           fi
 
@@ -317,12 +335,30 @@ jobs:
 
       - name: Post-Deploy Health Check (Production)
         run: |
-          echo "Verificando respuesta del sitio desplegado (ecommerce-vertex)..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://ecommerce-vertex.web.app/shop)
-          if [ "$STATUS" -eq 200 ] || [ "$STATUS" -eq 304 ]; then
-            echo "✅ Storefront PROD responde correctamente (HTTP $STATUS)"
-          else
-            echo "❌ Falló verificación post-deploy en Storefront PROD (HTTP $STATUS)"
+          echo "Verificando propagación activa de versión en Storefront PROD..."
+          EXPECTED_SHA="${{ github.sha }}"
+          SHORT_SHA="${EXPECTED_SHA:0:7}"
+          SUCCESS=0
+
+          for i in $(seq 1 10); do
+            echo "Intento $i de 10: Consultando https://ecommerce-vertex.web.app/assets/version.json?nocache=${EXPECTED_SHA} ..."
+            VERSION_RESP=$(curl -s "https://ecommerce-vertex.web.app/assets/version.json?nocache=${EXPECTED_SHA}" || true)
+            DEPLOYED_SHA=$(echo "$VERSION_RESP" | jq -r '.commitSha // empty' 2>/dev/null || echo "")
+
+            if [ "$DEPLOYED_SHA" = "$EXPECTED_SHA" ] || [ "$DEPLOYED_SHA" = "$SHORT_SHA" ]; then
+              echo "✅ Verificación exitosa en Storefront PROD: commitSha coincide ($DEPLOYED_SHA)"
+              SUCCESS=1
+              break
+            else
+              echo "⏳ Commit SHA detectado: '$DEPLOYED_SHA' (esperado: '$SHORT_SHA' o '$EXPECTED_SHA'). Reintentando en 5s..."
+              sleep 5
+            fi
+          done
+
+          if [ "$SUCCESS" -ne 1 ]; then
+            echo "❌ ERROR: Timeout en propagación de CDN para Storefront PROD tras 10 intentos (50s)."
+            echo "Última respuesta recibida:"
+            echo "$VERSION_RESP"
             exit 1
           fi
 
@@ -461,11 +497,13 @@ jobs:
           PROJECT_ID="${{ github.event.client_payload.project_id }}"
           if [ -n "$SITE_ID" ] && [ "$SITE_ID" != "default" ]; then
             echo "Ensuring site $SITE_ID exists on project $PROJECT_ID..."
-            npx firebase-tools hosting:sites:create "$SITE_ID" --project "$PROJECT_ID" --non-interactive || echo "Warning: hosting:sites:create returned non-zero status"
+            npx firebase-tools hosting:sites:create "$SITE_ID" --project "$PROJECT_ID" --non-interactive || true
+            echo "Deploying hosting to site $SITE_ID on Firebase project $PROJECT_ID..."
+            npx firebase-tools deploy --project "$PROJECT_ID" --only hosting --site "$SITE_ID" --non-interactive
+          else
+            echo "Deploying default hosting to Firebase project $PROJECT_ID..."
+            npx firebase-tools deploy --project "$PROJECT_ID" --only hosting --non-interactive
           fi
-
-          echo "Deploying hosting to Firebase project $PROJECT_ID..."
-          npx firebase-tools deploy --project "$PROJECT_ID" --only hosting --non-interactive
 
       - name: Notify platform of deployment completion
         if: always() && github.event.client_payload.platform_project_id != ''

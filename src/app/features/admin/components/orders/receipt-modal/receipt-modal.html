@@ -120,7 +120,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (item of order.items; track item.variantId) {
+            @for (item of order.items; track item.variantId || item.productId || $index) {
               <tr class="border-bottom border-light-subtle">
                 <td class="text-start py-2">
                   <span class="fw-semibold text-dark d-block">{{ item.productName }}</span>

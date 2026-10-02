@@ -19,8 +19,11 @@ export interface Product {
   createdAt: Date;
   updatedAt?: Date;
 
+  hasAttributes?: boolean;
+  stock?: number;
   totalStock: number;
   inStock?: boolean;
   inStockAttributes: { [key: string]: string[] };
   variantAttributes: string[];
+  variants?: ProductVariant[];
 }

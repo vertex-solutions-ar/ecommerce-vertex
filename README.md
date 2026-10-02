@@ -6,8 +6,8 @@ Plantilla de comercio electrónico para la tienda (storefront) y panel de admini
 
 Este proyecto opera bajo una topología de repositorios hermanos en paralelo:
 
-- **Plano de control (Backoffice central/API):** `platform/` (Asociado al repositorio `vertex-tech-devs/vertex-platform`)
-- **Plantilla de Tienda (Storefront/Admin cliente):** `storefront/` (Asociado al repositorio `vertex-tech-devs/ecommerce-vertex`)
+- **Plano de control (Backoffice central/API):** `platform/` (Asociado al repositorio `vertex-solutions-ar/vertex-platform`)
+- **Plantilla de Tienda (Storefront/Admin cliente):** `storefront/` (Asociado al repositorio `vertex-solutions-ar/ecommerce-vertex`)
 
 ### Consumo de Contratos Compartidos via File-Path
 
