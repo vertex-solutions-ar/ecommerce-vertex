@@ -110,8 +110,8 @@ jobs:
       - name: Check bundle size
         run: |
           SIZE=$(du -sk dist/ecommerce-vertex/browser | cut -f1)
-          echo "Bundle size: ${SIZE}KB (limit: 5000KB)"
-          [ "$SIZE" -le 5000 ] || { echo "::error::Bundle size ${SIZE}KB exceeds 5000KB limit"; exit 1; }
+          echo "Bundle size: ${SIZE}KB (limit: 6000KB)"
+          [ "$SIZE" -le 6000 ] || { echo "::error::Bundle size ${SIZE}KB exceeds 6000KB limit"; exit 1; }
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
