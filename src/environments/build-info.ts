@@ -1,0 +1,7 @@
+// Auto-generated build stamping metadata
+export const BUILD_INFO = {
+  version: '0.9.3',
+  commitSha: '7243e33',
+  timestamp: '2026-10-02T00:51:55.129Z',
+  env: 'production',
+} as const;
