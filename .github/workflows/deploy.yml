@@ -499,11 +499,10 @@ jobs:
             echo "Ensuring site $SITE_ID exists on project $PROJECT_ID..."
             npx firebase-tools hosting:sites:create "$SITE_ID" --project "$PROJECT_ID" --non-interactive || true
             echo "Deploying hosting to site $SITE_ID on Firebase project $PROJECT_ID..."
-            npx firebase-tools deploy --project "$PROJECT_ID" --only hosting --site "$SITE_ID" --non-interactive
           else
             echo "Deploying default hosting to Firebase project $PROJECT_ID..."
-            npx firebase-tools deploy --project "$PROJECT_ID" --only hosting --non-interactive
           fi
+          npx firebase-tools deploy --project "$PROJECT_ID" --only hosting --non-interactive
 
       - name: Notify platform of deployment completion
         if: always() && github.event.client_payload.platform_project_id != ''
