@@ -448,6 +448,11 @@ jobs:
 
       - name: Build production
         run: npm run build
+        env:
+          DEPLOY_NUMBER: ${{ github.event.client_payload.deploy_number || '1' }}
+          REDEPLOY_NUMBER: ${{ github.event.client_payload.redeploy_number || '0' }}
+          IS_REDEPLOY: ${{ github.event.client_payload.is_redeploy || 'false' }}
+          DEPLOY_TIMESTAMP: ${{ github.event.client_payload.deploy_timestamp || '' }}
 
       - name: Write minimal firebase.json for store deployment
         run: |

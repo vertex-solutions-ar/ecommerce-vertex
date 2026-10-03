@@ -37,14 +37,24 @@ function getEnvironmentName() {
 function main() {
   const version = getPackageVersion();
   const commitSha = getCommitSha();
-  const timestamp = new Date().toISOString();
+  const deployTimestamp = process.env.DEPLOY_TIMESTAMP || new Date().toISOString();
   const env = getEnvironmentName();
+  const deployNumber = parseInt(process.env.DEPLOY_NUMBER || '1', 10) || 1;
+  const redeployNumber = parseInt(process.env.REDEPLOY_NUMBER || '0', 10) || 0;
+  const isRedeploy =
+    process.env.IS_REDEPLOY !== undefined
+      ? process.env.IS_REDEPLOY === 'true' || process.env.IS_REDEPLOY === '1'
+      : redeployNumber > 0;
 
   const buildInfo = {
     version,
     commitSha,
-    timestamp,
+    timestamp: deployTimestamp,
     env,
+    deployNumber,
+    redeployNumber,
+    isRedeploy,
+    deployTimestamp,
   };
 
   const environmentsDir = path.resolve(__dirname, '../src/environments');
@@ -63,8 +73,12 @@ function main() {
 export const BUILD_INFO = {
   version: '${version}',
   commitSha: '${commitSha}',
-  timestamp: '${timestamp}',
+  timestamp: '${deployTimestamp}',
   env: '${env}',
+  deployNumber: ${deployNumber},
+  redeployNumber: ${redeployNumber},
+  isRedeploy: ${isRedeploy},
+  deployTimestamp: '${deployTimestamp}',
 } as const;
 `;
 
