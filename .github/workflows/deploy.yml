@@ -537,7 +537,7 @@ jobs:
           npx firebase-tools deploy --project "$PROJECT_ID" --only hosting --non-interactive
 
       - name: Notify platform of deployment completion
-        if: always() && github.event.client_payload.platform_project_id != ''
+        if: always() && !cancelled() && github.event.client_payload.platform_project_id != ''
         run: |
           # AUTOMATIZADO: autenticación OIDC de GitHub Actions (sin secrets manuales).
           # El platform valida el id_token (issuer, audience 'vertex-platform', repository, firma).
