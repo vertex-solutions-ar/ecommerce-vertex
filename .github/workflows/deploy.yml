@@ -397,7 +397,7 @@ jobs:
           import os, json
           import json as _json
           _event = _json.load(open(os.environ["GITHUB_EVENT_PATH"]))
-          _payload = _event["client_payload"]
+          _payload = _event.get("client_payload", {})
           config = _json.loads(_payload["firebase_config"])
           store_id = _payload.get("store_id", "store")
           tenant_id = (_payload.get("tenant_id", "") or "").strip() or store_id
@@ -440,19 +440,46 @@ jobs:
 
           # Write firebase-config.json so Angular fetches the correct shard
           # config at runtime instead of the hardcoded fallback in environment.ts.
-          # This is what fixes "store deployed but empty" — main.ts fetches this
-          # file first and uses it to initialise the Firebase SDK.
           with open("src/firebase-config.json", "w") as f:
             json.dump(config, f, indent=2)
+
+          # Extraer y preparar metadata para version.json (soportando claves planas o anidadas en meta)
+          meta = _payload.get("meta") or {}
+          version = _payload.get("version") or meta.get("version")
+          if not version:
+              try:
+                  version = json.load(open("package.json")).get("version", "0.9.4")
+              except Exception:
+                  version = "0.9.4"
+          deploy_number = _payload.get("deploy_number") or meta.get("deploy_number") or 1
+          redeploy_number = _payload.get("redeploy_number") or meta.get("redeploy_number") or 0
+          is_redeploy = _payload.get("is_redeploy") if "is_redeploy" in _payload else meta.get("is_redeploy", (int(redeploy_number) > 0))
+          deploy_timestamp = _payload.get("deploy_timestamp") or meta.get("deploy_timestamp") or ""
+
+          os.makedirs("src/assets", exist_ok=True)
+          version_info = {
+              "version": version,
+              "deployNumber": int(deploy_number),
+              "redeployNumber": int(redeploy_number),
+              "isRedeploy": bool(is_redeploy),
+              "deployTimestamp": deploy_timestamp,
+              "timestamp": deploy_timestamp
+          }
+          with open("src/assets/version.json", "w") as vf:
+              json.dump(version_info, vf, indent=2)
           PYEOF
 
       - name: Build production
-        run: npm run build
+        run: |
+          npm run build
+          # Asegurar que version.json esté en el bundle distribuido
+          mkdir -p dist/ecommerce-vertex/browser/assets
+          cp src/assets/version.json dist/ecommerce-vertex/browser/assets/version.json || true
         env:
-          DEPLOY_NUMBER: ${{ github.event.client_payload.deploy_number || '1' }}
-          REDEPLOY_NUMBER: ${{ github.event.client_payload.redeploy_number || '0' }}
-          IS_REDEPLOY: ${{ github.event.client_payload.is_redeploy || 'false' }}
-          DEPLOY_TIMESTAMP: ${{ github.event.client_payload.deploy_timestamp || '' }}
+          DEPLOY_NUMBER: ${{ github.event.client_payload.deploy_number || github.event.client_payload.meta.deploy_number || '1' }}
+          REDEPLOY_NUMBER: ${{ github.event.client_payload.redeploy_number || github.event.client_payload.meta.redeploy_number || '0' }}
+          IS_REDEPLOY: ${{ github.event.client_payload.is_redeploy || github.event.client_payload.meta.is_redeploy || 'false' }}
+          DEPLOY_TIMESTAMP: ${{ github.event.client_payload.deploy_timestamp || github.event.client_payload.meta.deploy_timestamp || '' }}
 
       - name: Write minimal firebase.json for store deployment
         run: |
@@ -522,7 +549,7 @@ jobs:
           COMMIT_MSG=$(git log -1 --pretty=%B | tr -d '"' | tr -d '\n' | tr -d '\r' | cut -c1-100)
           # El ref del token OIDC es el del workflow (main), no el del template (client_payload.ref).
           REF_NAME="${{ github.ref }}"
-          VERSION="${{ github.event.client_payload.version }}"
+          VERSION="${{ github.event.client_payload.version || github.event.client_payload.meta.version }}"
           if [ -z "$VERSION" ]; then
             VERSION=$(node -p "require('./package.json').version")
           fi
