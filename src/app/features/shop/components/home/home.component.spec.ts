@@ -5,6 +5,7 @@ import { of, throwError } from 'rxjs';
 import { Home } from './home';
 import { HomeContentService } from '@core/services/home-content.service';
 import { ProductService } from '@core/services/product.service';
+import { CartService } from '@core/services/cart.service';
 import type { HeroBanner } from '@core/models/home-content.model';
 import type { Product } from '@core/models/product.model';
 
@@ -13,6 +14,7 @@ describe('Home', () => {
   let fixture: ComponentFixture<Home>;
   let homeContentServiceSpy: jasmine.SpyObj<HomeContentService>;
   let productServiceSpy: jasmine.SpyObj<ProductService>;
+  let cartServiceSpy: jasmine.SpyObj<CartService>;
 
   const mockBanner: HeroBanner = {
     id: 'b1',
@@ -38,6 +40,7 @@ describe('Home', () => {
       'getLatestProducts',
       'getProductsByIds',
     ]);
+    cartServiceSpy = jasmine.createSpyObj('CartService', ['addToCart']);
 
     homeContentServiceSpy.getHeroBanner.and.returnValue(of(mockBanner));
     productServiceSpy.getLatestProducts.and.returnValue(of(mockProducts));
@@ -49,6 +52,7 @@ describe('Home', () => {
         provideRouter([]),
         { provide: HomeContentService, useValue: homeContentServiceSpy },
         { provide: ProductService, useValue: productServiceSpy },
+        { provide: CartService, useValue: cartServiceSpy },
       ],
     }).compileComponents();
   });
