@@ -138,7 +138,7 @@
                 <span class="order-badge" [title]="'Posición ' + (i + 1)">{{ i + 1 }}</span>
               </div>
 
-              <div class="product-details text-truncate">
+              <div class="product-details selected-product__info text-truncate">
                 <h6 class="product-name text-truncate text-white mb-1" [title]="prod.name">
                   {{ prod.name }}
                 </h6>
@@ -150,7 +150,9 @@
                 </div>
               </div>
 
-              <div class="product-actions d-flex align-items-center gap-1 shrink-0">
+              <div
+                class="product-actions selected-product__actions d-flex align-items-center gap-1 shrink-0"
+              >
                 <button
                   type="button"
                   class="btn-action-icon"
