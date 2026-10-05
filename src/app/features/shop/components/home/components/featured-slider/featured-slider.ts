@@ -12,7 +12,7 @@ import { RouterModule } from '@angular/router';
 import type { Product } from '@core/models/product.model';
 import { CartService } from '@core/services/cart.service';
 
-const MIN_MARQUEE_ITEMS = 15;
+const MIN_MARQUEE_ITEMS = 18;
 const SECONDS_PER_UNIQUE_PRODUCT = 8;
 const MIN_ANIMATION_DURATION_SECONDS = 75;
 const MAX_ANIMATION_DURATION_SECONDS = 95;
@@ -88,7 +88,7 @@ export class FeaturedSlider {
   /**
    * Garantiza que la pista del carrusel cuente con suficientes elementos duplicados
    * para cubrir pantallas anchas y ultra-wide (3440px+), asegurando un desplazamiento
-   * continuo determinista y sin vacíos visuales (mínimo 15 ítems por bloque).
+   * continuo determinista y sin vacíos visuales (mínimo 18 ítems por bloque).
    */
   readonly displayProducts = computed<Product[]>(() => {
     const list = this.products();

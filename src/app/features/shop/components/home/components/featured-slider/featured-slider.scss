@@ -35,8 +35,10 @@
 .marquee {
   position: relative;
   width: 100%;
+  display: flex;
   overflow: hidden;
   user-select: none;
+  gap: var(--marquee-gap);
   padding: 8px 0 16px;
 
   // Dimensiones responsive: 2 items por viewport en mobile, 5 en desktop
@@ -58,12 +60,6 @@
   &:focus-within .marquee__group {
     animation-play-state: paused;
   }
-}
-
-.marquee__track {
-  display: flex;
-  width: max-content;
-  gap: var(--marquee-gap);
 }
 
 .marquee__group {
