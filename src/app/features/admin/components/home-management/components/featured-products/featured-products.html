@@ -1,78 +1,109 @@
 <div [formGroup]="formGroup()" class="glass-card mb-5 card-featured-products">
-  <div class="card-header border-0 d-flex justify-content-between align-items-center fw-bold">
-    <div><i class="bi bi-stars me-2 text-warning" aria-hidden="true"></i>Sección de Destacados</div>
-    <div class="form-check form-switch custom-switch m-0 d-flex align-items-center">
-      <input
-        class="form-check-input m-0 me-2"
-        type="checkbox"
-        id="featuredEnabledSwitch"
-        formControlName="enabled"
-        style="width: 2.75rem; height: 1.4rem"
-      />
-      <label class="form-check-label text-soft fw-medium small" for="featuredEnabledSwitch">
-        {{ formGroup().get('enabled')?.value ? 'Activada' : 'Desactivada' }}
-      </label>
+  <div
+    class="card-header border-0 d-flex flex-wrap justify-content-between align-items-center gap-3 fw-bold"
+  >
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-stars me-2 header-icon" aria-hidden="true"></i>
+      <span class="header-title">Productos Destacados</span>
+      <span
+        class="status-pill ms-2"
+        [class.status-pill--active]="formGroup().get('enabled')?.value"
+        [class.status-pill--inactive]="!formGroup().get('enabled')?.value"
+      >
+        <span class="status-dot"></span>
+        {{ formGroup().get('enabled')?.value ? 'Activo' : 'Inactivo' }}
+      </span>
+    </div>
+
+    <div class="header-actions d-flex align-items-center">
+      <div class="form-check form-switch custom-switch m-0 d-flex align-items-center p-0">
+        <input
+          class="form-check-input m-0 me-2"
+          type="checkbox"
+          id="featuredEnabledSwitch"
+          formControlName="enabled"
+          style="width: 2.75rem; height: 1.4rem"
+        />
+        <label class="form-check-label text-soft fw-medium small" for="featuredEnabledSwitch">
+          {{ formGroup().get('enabled')?.value ? 'Activada' : 'Desactivada' }}
+        </label>
+      </div>
     </div>
   </div>
 
   <div class="card-body">
     @if (formGroup().get('enabled')?.value) {
-      <div class="row g-4 mb-4">
-        <div class="col-12 col-md-8">
-          <label for="featuredTitleInput" class="form-label text-label">
-            Título de la Sección <span class="text-danger">*</span>
-          </label>
-          <input
-            id="featuredTitleInput"
-            type="text"
-            class="form-control glass-input"
-            formControlName="title"
-            placeholder="Ej: Destacados de la Semana"
-          />
+      <div class="glass-inner-card mb-4">
+        <div class="row g-3 align-items-center">
+          <div class="col-12 col-md-8">
+            <label for="featuredTitleInput" class="form-label text-label">
+              Título de la Sección <span class="text-danger">*</span>
+            </label>
+            <input
+              id="featuredTitleInput"
+              type="text"
+              class="form-control glass-input"
+              formControlName="title"
+              placeholder="Ej: Destacados de la Semana"
+            />
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="title-hint small text-soft mt-md-4">
+              <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+              Encabezado visible sobre el carrusel en la tienda.
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- Barra de Estado y Contador Reactivo -->
       <div
-        class="counter-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3 p-3 rounded mb-4"
+        class="counter-toolbar glass-inner-card d-flex flex-wrap justify-content-between align-items-center gap-3 p-3 mb-4"
       >
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
           <span
             class="counter-badge"
-            [class.counter-badge--valid]="isMinReached() && !isMaxReached()"
             [class.counter-badge--warning]="!isMinReached()"
+            [class.counter-badge--valid]="isMinReached() && !isMaxReached()"
             [class.counter-badge--max]="isMaxReached()"
           >
             <i
               class="bi me-1"
-              [class.bi-check-circle-fill]="isMinReached() && !isMaxReached()"
               [class.bi-exclamation-triangle-fill]="!isMinReached()"
+              [class.bi-check-circle-fill]="isMinReached() && !isMaxReached()"
               [class.bi-info-circle-fill]="isMaxReached()"
+              aria-hidden="true"
             ></i>
-            {{ productCount() }} / 15 productos
+            <span class="counter-number">{{ productCount() }}</span> / 15 productos
           </span>
 
-          @if (!isMinReached()) {
-            <span class="text-warning small fw-medium">
-              (Se requieren entre 5 y 15 productos para el slider continuo)
-            </span>
-          } @else if (isMaxReached()) {
-            <span class="text-info small fw-medium">
+          <span
+            class="counter-hint small fw-medium"
+            [class.text-warning]="!isMinReached()"
+            [class.text-success]="isMinReached() && !isMaxReached()"
+            [class.text-info]="isMaxReached()"
+          >
+            @if (!isMinReached()) {
+              (Se requieren entre 5 y 15 productos · Faltan {{ 5 - productCount() }})
+            } @else if (isMaxReached()) {
               (Límite máximo de 15 productos alcanzado)
-            </span>
-          } @else {
-            <span class="text-success small fw-medium">
+            } @else {
               (Cantidad óptima para el slider continuo)
-            </span>
-          }
+            }
+          </span>
         </div>
 
         <button
           #addBtn
           type="button"
-          class="btn-glass-action btn-add-success"
+          class="btn-glass-action btn-add-product"
           (click)="openModal()"
           [disabled]="isMaxReached()"
+          [title]="
+            isMaxReached()
+              ? 'Límite máximo de 15 productos alcanzado'
+              : 'Añadir producto a destacados'
+          "
         >
           <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Añadir Producto
         </button>
@@ -80,10 +111,10 @@
 
       @if (!isMinReached()) {
         <div
-          class="alert alert-warning d-flex align-items-center py-2 px-3 mb-4 rounded-3"
+          class="glass-alert glass-alert--warning d-flex align-items-center py-2 px-3 mb-4 rounded-3"
           role="alert"
         >
-          <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+          <i class="bi bi-exclamation-triangle-fill me-2 fs-5" aria-hidden="true"></i>
           <div>
             Debes seleccionar al menos <strong>5 productos</strong> para habilitar el slider. Faltan
             {{ 5 - productCount() }} producto(s).
@@ -98,76 +129,95 @@
             <div class="selected-product-card glass-inner-card">
               <div class="thumb-container">
                 @if (prod.image) {
-                  <img [src]="prod.image" [alt]="prod.name" class="product-thumb" />
+                  <img [src]="prod.image" [alt]="prod.name" class="product-thumb" loading="lazy" />
                 } @else {
                   <div class="product-thumb-placeholder">
-                    <i class="bi bi-box-seam"></i>
+                    <i class="bi bi-box-seam" aria-hidden="true"></i>
                   </div>
                 }
-                <span class="order-badge">{{ i + 1 }}</span>
+                <span class="order-badge" [title]="'Posición ' + (i + 1)">{{ i + 1 }}</span>
               </div>
 
               <div class="product-details text-truncate">
                 <h6 class="product-name text-truncate text-white mb-1" [title]="prod.name">
                   {{ prod.name }}
                 </h6>
-                <div class="product-meta small text-soft">
-                  <span class="font-monospace text-indigo">{{ prod.price | currency }}</span>
+                <div class="product-meta small d-flex align-items-center gap-2">
+                  <span class="product-price font-monospace text-amber">{{
+                    prod.price | currency
+                  }}</span>
+                  <span class="product-id font-monospace text-soft-muted">ID: {{ prod.id }}</span>
                 </div>
               </div>
 
-              <div class="product-actions d-flex gap-1 shrink-0">
+              <div class="product-actions d-flex align-items-center gap-1 shrink-0">
                 <button
                   type="button"
                   class="btn-action-icon"
                   (click)="moveUp(i)"
                   [disabled]="i === 0"
-                  title="Mover arriba"
+                  title="Subir posición"
+                  aria-label="Subir posición"
                 >
-                  <i class="bi bi-chevron-up"></i>
+                  <i class="bi bi-arrow-up" aria-hidden="true"></i>
                 </button>
                 <button
                   type="button"
                   class="btn-action-icon"
                   (click)="moveDown(i)"
                   [disabled]="i === selectedProductsList().length - 1"
-                  title="Mover abajo"
+                  title="Bajar posición"
+                  aria-label="Bajar posición"
                 >
-                  <i class="bi bi-chevron-down"></i>
+                  <i class="bi bi-arrow-down" aria-hidden="true"></i>
                 </button>
                 <button
                   type="button"
                   class="btn-action-icon btn-action-icon--delete"
                   (click)="removeProduct(i)"
                   title="Quitar de destacados"
+                  aria-label="Quitar de destacados"
                 >
-                  <i class="bi bi-trash3"></i>
+                  <i class="bi bi-trash3" aria-hidden="true"></i>
                 </button>
               </div>
             </div>
           }
         </div>
       } @else {
-        <div class="empty-state py-4 text-center">
-          <i class="bi bi-bag-plus empty-icon text-soft" style="font-size: 2.5rem"></i>
-          <p class="fs-6 mt-2 fw-bold text-soft mb-1">
-            No hay productos seleccionados para el slider.
+        <div class="empty-state py-5 text-center">
+          <div class="empty-icon-wrap mb-3 mx-auto">
+            <i class="bi bi-stars empty-icon" aria-hidden="true"></i>
+          </div>
+          <h6 class="fs-6 fw-bold text-white mb-1">No hay productos seleccionados aún</h6>
+          <p class="small text-soft mb-3">
+            Haz clic en "Añadir Producto" para comenzar a configurar la sección de destacados.
           </p>
-          <p class="small text-soft">
-            Haz clic en "Añadir Producto" para comenzar a configurar la sección.
-          </p>
+          <button
+            type="button"
+            class="btn-glass-action btn-add-product btn-sm"
+            (click)="openModal()"
+          >
+            <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Añadir Primer Producto
+          </button>
         </div>
       }
     } @else {
-      <div class="disabled-notice py-3 text-center text-soft">
-        <i class="bi bi-eye-slash me-2"></i>
-        La sección de productos destacados está actualmente desactivada en la tienda.
+      <div class="disabled-state py-5 text-center">
+        <div class="disabled-icon-wrap mb-3 mx-auto">
+          <i class="bi bi-eye-slash" aria-hidden="true"></i>
+        </div>
+        <h6 class="fs-6 fw-bold text-white mb-1">Sección de Productos Destacados Desactivada</h6>
+        <p class="small text-soft max-w-md mx-auto mb-0">
+          La sección de productos destacados está actualmente desactivada en la tienda. Actívala
+          usando el switch superior para configurar los productos.
+        </p>
       </div>
     }
   </div>
 </div>
 
-<!-- Modal Accesible de Selección de Productos -->
+<!-- Modal Accesible de Búsqueda y Selección de Productos -->
 @if (isModalOpen()) {
   <div class="modal-backdrop glass-backdrop fade show"></div>
   <div
@@ -178,73 +228,163 @@
   >
     <div class="modal-dialog modal-dialog-centered modal-lg" (click)="$event.stopPropagation()">
       <div class="modal-content glass-modal-content">
-        <div class="modal-header border-0">
-          <h5 class="modal-title fw-bold text-white">
-            <i class="bi bi-plus-circle me-2 text-warning"></i> Añadir a Destacados
+        <div class="modal-header border-0 d-flex justify-content-between align-items-center">
+          <h5 class="modal-title fw-bold text-white m-0 d-flex align-items-center">
+            <i class="bi bi-stars me-2 text-warning" aria-hidden="true"></i> Añadir a Destacados
           </h5>
-          <button type="button" class="btn-close btn-close-white" (click)="closeModal()"></button>
+          <button
+            type="button"
+            class="btn-close btn-close-white"
+            (click)="closeModal()"
+            aria-label="Cerrar modal"
+          ></button>
         </div>
 
         <div class="modal-body">
+          <!-- Barra de búsqueda con icono de lupa -->
           <div class="search-input-wrap position-relative mb-3">
             <i
               class="bi bi-search position-absolute text-soft"
-              style="top: 50%; left: 1rem; transform: translateY(-50%)"
+              style="top: 50%; left: 1.1rem; transform: translateY(-50%)"
+              aria-hidden="true"
             ></i>
             <input
               #productSearchInput
               autofocus
               type="text"
-              class="form-control glass-input"
-              style="padding-left: 2.5rem"
+              class="form-control glass-input search-input"
+              style="padding-left: 2.8rem; padding-right: 2.5rem"
               placeholder="Buscar por nombre o ID de producto..."
               [value]="searchTerm()"
               (input)="onSearchInput($event)"
             />
+            @if (searchTerm()) {
+              <button
+                type="button"
+                class="btn-clear-search position-absolute"
+                style="top: 50%; right: 1rem; transform: translateY(-50%)"
+                (click)="clearSearch()"
+                title="Limpiar búsqueda"
+                aria-label="Limpiar búsqueda"
+              >
+                <i class="bi bi-x-circle-fill" aria-hidden="true"></i>
+              </button>
+            }
           </div>
 
+          <!-- Barra de estado y feedback en modal -->
+          <div
+            class="modal-status-bar d-flex flex-wrap justify-content-between align-items-center px-3 py-2 rounded-3 mb-3"
+          >
+            <span class="small text-soft">
+              @if (isMaxReached()) {
+                <span class="text-info fw-bold">
+                  <i class="bi bi-info-circle me-1" aria-hidden="true"></i>Límite alcanzado (15/15)
+                </span>
+              } @else {
+                <span>Selecciona los productos que aparecerán en el slider continuo</span>
+              }
+            </span>
+            <span
+              class="counter-badge counter-badge--sm"
+              [class.counter-badge--warning]="!isMinReached()"
+              [class.counter-badge--valid]="isMinReached() && !isMaxReached()"
+              [class.counter-badge--max]="isMaxReached()"
+            >
+              {{ productCount() }} / 15 seleccionados
+            </span>
+          </div>
+
+          <!-- Feedback visual claro para productos que ya están seleccionados -->
+          @if (matchingSelectedProducts().length > 0) {
+            <div class="selected-matches mb-3 p-3 rounded-3">
+              <div class="small text-soft fw-bold mb-2 d-flex align-items-center">
+                <i class="bi bi-check2-circle text-success me-2" aria-hidden="true"></i>
+                Ya seleccionados (coincidencias):
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                @for (sel of matchingSelectedProducts(); track sel.id) {
+                  <span class="selected-chip d-inline-flex align-items-center gap-2">
+                    @if (sel.image) {
+                      <img [src]="sel.image" [alt]="sel.name" class="chip-thumb" />
+                    }
+                    <span class="chip-name text-truncate">{{ sel.name }}</span>
+                    <span class="badge bg-success-subtle text-success">✓ Ya en lista</span>
+                  </span>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Lista de productos disponibles con scroll suave -->
           <div class="modal-products-list custom-scrollbar">
             @for (prod of filteredAvailableProducts(); track prod.id) {
               <div
-                class="modal-product-row d-flex align-items-center justify-content-between p-2 rounded cursor-pointer mb-2"
-                (click)="addProduct(prod)"
+                class="modal-product-row d-flex align-items-center justify-content-between p-2 rounded-3 mb-2"
+                [class.disabled-row]="isMaxReached()"
+                (click)="!isMaxReached() && addProduct(prod)"
               >
                 <div class="d-flex align-items-center gap-3 overflow-hidden me-2">
-                  @if (prod.image) {
-                    <img [src]="prod.image" [alt]="prod.name" class="mini-thumb rounded" />
-                  } @else {
-                    <div
-                      class="mini-thumb-placeholder rounded d-flex align-items-center justify-content-center"
-                    >
-                      <i class="bi bi-box-seam text-soft"></i>
-                    </div>
-                  }
+                  <div class="mini-thumb-wrap flex-shrink-0">
+                    @if (prod.image) {
+                      <img
+                        [src]="prod.image"
+                        [alt]="prod.name"
+                        class="mini-thumb rounded-3"
+                        loading="lazy"
+                      />
+                    } @else {
+                      <div
+                        class="mini-thumb-placeholder rounded-3 d-flex align-items-center justify-content-center"
+                      >
+                        <i class="bi bi-box-seam text-soft" aria-hidden="true"></i>
+                      </div>
+                    }
+                  </div>
                   <div class="text-truncate">
-                    <div class="fw-medium text-white text-truncate">{{ prod.name }}</div>
-                    <div class="small text-soft font-monospace">ID: {{ prod.id }}</div>
+                    <div
+                      class="product-row-name fw-medium text-white text-truncate"
+                      [title]="prod.name"
+                    >
+                      {{ prod.name }}
+                    </div>
+                    <div class="small text-soft-muted font-monospace">ID: {{ prod.id }}</div>
                   </div>
                 </div>
 
                 <div class="d-flex align-items-center gap-3 shrink-0">
-                  <span class="product-price text-indigo font-monospace">{{
+                  <span class="product-price text-amber font-monospace">{{
                     prod.price | currency
                   }}</span>
-                  <button type="button" class="btn btn-sm btn-outline-primary">
-                    <i class="bi bi-plus-lg me-1"></i> Seleccionar
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-select-action"
+                    [disabled]="isMaxReached()"
+                    (click)="$event.stopPropagation(); addProduct(prod)"
+                    [title]="isMaxReached() ? 'Límite máximo alcanzado' : 'Añadir a destacados'"
+                  >
+                    <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Seleccionar
                   </button>
                 </div>
               </div>
             }
+
             @if (filteredAvailableProducts().length === 0) {
               <div class="empty-results text-center py-4 text-soft">
-                <i class="bi bi-search d-block fs-3 mb-2"></i>
-                No hay más productos disponibles para seleccionar.
+                <i class="bi bi-search d-block fs-3 mb-2 opacity-50" aria-hidden="true"></i>
+                @if (searchTerm()) {
+                  <span>No se encontraron productos disponibles con "{{ searchTerm() }}".</span>
+                } @else if (isMaxReached()) {
+                  <span>Todos los cupos están cubiertos (15 de 15 productos seleccionados).</span>
+                } @else {
+                  <span>No hay más productos disponibles para seleccionar.</span>
+                }
               </div>
             }
           </div>
         </div>
 
-        <div class="modal-footer border-0">
+        <div class="modal-footer border-0 pt-0">
           <button type="button" class="btn-save-primary w-100 m-0" (click)="closeModal()">
             Listo ({{ productCount() }}/15 seleccionados)
           </button>

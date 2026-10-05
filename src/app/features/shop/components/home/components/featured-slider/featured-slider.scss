@@ -74,7 +74,7 @@
   min-width: 100%;
   will-change: transform;
   // Animación infinita fluida acelerada por GPU hacia la izquierda
-  animation: marqueeScroll var(--marquee-duration, 30s) linear infinite;
+  animation: marqueeScroll var(--marquee-duration, 50s) linear infinite;
   transform: translate3d(0, 0, 0);
 }
 
@@ -169,6 +169,7 @@
   margin: 0 0 6px 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   line-height: 1.3;
@@ -179,12 +180,5 @@
   font-size: 1.15rem;
   font-weight: 700;
   color: #111;
-  margin: auto 0 4px 0;
-}
-
-.product-card__shipping {
-  font-size: 0.75rem;
-  color: #16a34a;
-  margin: 0;
-  font-weight: 600;
+  margin: auto 0 0 0;
 }

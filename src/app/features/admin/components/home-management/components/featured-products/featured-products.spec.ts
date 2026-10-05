@@ -128,4 +128,28 @@ describe('FeaturedProducts', () => {
     component.moveDown(2);
     expect(component.selectedIds()[2]).toBe('p3');
   });
+
+  it('should identify selected products with isProductSelected', () => {
+    expect(component.isProductSelected('p1')).toBeTrue();
+    expect(component.isProductSelected('p4')).toBeFalse();
+  });
+
+  it('should compute matchingSelectedProducts based on search term', () => {
+    expect(component.matchingSelectedProducts()).toEqual([]);
+
+    component.onSearchInput({ target: { value: 'Zapatillas' } } as unknown as Event);
+    expect(component.matchingSelectedProducts().length).toBe(1);
+    expect(component.matchingSelectedProducts()[0].id).toBe('p1');
+
+    component.onSearchInput({ target: { value: 'Inexistente' } } as unknown as Event);
+    expect(component.matchingSelectedProducts().length).toBe(0);
+  });
+
+  it('should clear search term with clearSearch', () => {
+    component.onSearchInput({ target: { value: 'Campera' } } as unknown as Event);
+    expect(component.searchTerm()).toBe('Campera');
+
+    component.clearSearch();
+    expect(component.searchTerm()).toBe('');
+  });
 });
