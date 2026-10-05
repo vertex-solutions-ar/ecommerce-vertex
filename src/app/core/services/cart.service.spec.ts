@@ -125,6 +125,19 @@ describe('CartService', () => {
       expect(service.cart().items.find((item) => item.id === 'var-1')?.quantity).toBe(2);
       expect(service.cart().items.find((item) => item.id === 'var-2')?.quantity).toBe(1);
     });
+
+    it('should add simple product via addToCart shortcut without explicit variant', () => {
+      const product = makeProduct({ id: 'prod-simple', totalStock: 5 });
+      service.addToCart(product, 2);
+
+      expect(service.cart().items.length).toBe(1);
+      expect(service.cart().items[0].productId).toBe('prod-simple');
+      expect(service.cart().items[0].quantity).toBe(2);
+      expect(sweetAlertSpy.success).toHaveBeenCalledWith(
+        '¡Añadido!',
+        'Producto añadido al carrito.',
+      );
+    });
   });
 
   describe('removeItem()', () => {

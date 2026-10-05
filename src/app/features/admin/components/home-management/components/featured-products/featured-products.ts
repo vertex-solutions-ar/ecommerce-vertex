@@ -56,6 +56,16 @@ export class FeaturedProducts implements OnInit {
     return ids.map((id) => map.get(id)).filter((p): p is Product => p !== undefined);
   });
 
+  readonly matchingSelectedProducts = computed<Product[]>(() => {
+    const term = this.searchTerm().trim().toLowerCase();
+    if (!term) {
+      return [];
+    }
+    return this.selectedProductsList().filter(
+      (p) => p.name.toLowerCase().includes(term) || p.id?.toLowerCase().includes(term),
+    );
+  });
+
   readonly filteredAvailableProducts = computed<Product[]>(() => {
     const selectedSet = new Set(this.selectedIds());
     const term = this.searchTerm().trim().toLowerCase();
@@ -69,6 +79,10 @@ export class FeaturedProducts implements OnInit {
       return p.name.toLowerCase().includes(term) || p.id?.toLowerCase().includes(term);
     });
   });
+
+  isProductSelected(id: string): boolean {
+    return this.selectedIds().includes(id);
+  }
 
   ngOnInit(): void {
     const initialIds = (this.formGroup().get('productIds')?.value as string[]) || [];
@@ -102,6 +116,14 @@ export class FeaturedProducts implements OnInit {
     setTimeout(() => {
       this.addBtn?.nativeElement.focus();
     }, 0);
+  }
+
+  clearSearch(): void {
+    this.searchTerm.set('');
+    if (this.searchInput?.nativeElement) {
+      this.searchInput.nativeElement.value = '';
+      this.searchInput.nativeElement.focus();
+    }
   }
 
   addProduct(product: Product): void {

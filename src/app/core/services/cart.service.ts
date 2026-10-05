@@ -90,6 +90,14 @@ export class CartService {
       .join(' / ');
   }
 
+  /**
+   * Atajo conveniente para añadir productos estándar directamente al carrito
+   * sin requerir selección explícita de variantes.
+   */
+  addToCart(product: Product, quantity = 1): void {
+    this.addItem(product, null, quantity);
+  }
+
   addItem(product: Product, variant: ProductVariant | null | undefined, quantity: number): void {
     const availableStock = variant ? variant.stock : (product.stock ?? product.totalStock ?? 0);
 

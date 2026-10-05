@@ -31,10 +31,25 @@
               </div>
               <div class="product-card__body">
                 <h3 class="product-card__name">{{ product.name }}</h3>
-                <p class="product-card__price">
-                  {{ product.price | currency: 'ARS' : '$' : '1.0-0' }}
-                </p>
-                <p class="product-card__shipping">Envío gratis</p>
+                <div class="product-card__footer">
+                  <p class="product-card__price">
+                    {{ product.price | currency: 'ARS' : '$' : '1.0-0' }}
+                  </p>
+                  <button
+                    type="button"
+                    class="btn-quick-add"
+                    [class.btn-quick-add--added]="isAdded(product.id)"
+                    (click)="onAddToCart($event, product)"
+                    aria-label="Agregar al carrito"
+                    [title]="isAdded(product.id) ? 'Agregado al carrito' : 'Agregar al carrito'"
+                  >
+                    @if (isAdded(product.id)) {
+                      <i class="bi bi-check-lg" aria-hidden="true"></i>
+                    } @else {
+                      <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                    }
+                  </button>
+                </div>
               </div>
             </a>
           }
@@ -60,10 +75,26 @@
               </div>
               <div class="product-card__body">
                 <h3 class="product-card__name">{{ product.name }}</h3>
-                <p class="product-card__price">
-                  {{ product.price | currency: 'ARS' : '$' : '1.0-0' }}
-                </p>
-                <p class="product-card__shipping">Envío gratis</p>
+                <div class="product-card__footer">
+                  <p class="product-card__price">
+                    {{ product.price | currency: 'ARS' : '$' : '1.0-0' }}
+                  </p>
+                  <button
+                    type="button"
+                    tabindex="-1"
+                    class="btn-quick-add"
+                    [class.btn-quick-add--added]="isAdded(product.id)"
+                    (click)="onAddToCart($event, product)"
+                    aria-label="Agregar al carrito"
+                    aria-hidden="true"
+                  >
+                    @if (isAdded(product.id)) {
+                      <i class="bi bi-check-lg" aria-hidden="true"></i>
+                    } @else {
+                      <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                    }
+                  </button>
+                </div>
               </div>
             </a>
           }
