@@ -46,7 +46,7 @@ describe('FeaturedSlider', () => {
 
     expect(component.hasProducts()).toBeTrue();
     expect(component.title()).toBe('Imperdibles de la Semana');
-    expect(component.displayProducts().length).toBeGreaterThanOrEqual(15);
+    expect(component.displayProducts().length).toBeGreaterThanOrEqual(18);
     expect(component.animationDuration()).toContain('s');
 
     const titleElement: HTMLElement =
@@ -83,22 +83,22 @@ describe('FeaturedSlider', () => {
     componentRef.setInput('products', sevenProducts);
     fixture.detectChanges();
 
-    // 7 ítems se duplican cíclicamente hasta superar el umbral de 15 ítems (7 -> 14 -> 21)
+    // 7 ítems se duplican cíclicamente hasta superar el umbral de 18 ítems (7 -> 14 -> 21)
     expect(component.displayProducts().length).toBe(21);
   });
 
-  it('should not duplicate beyond necessary if already 15 or more products', () => {
-    const fifteenProducts: Product[] = Array.from({ length: 15 }, (_, i) => ({
+  it('should not duplicate beyond necessary if already 18 or more products', () => {
+    const eighteenProducts: Product[] = Array.from({ length: 18 }, (_, i) => ({
       id: `p-${i}`,
       name: `Producto ${i}`,
       price: 1000 * (i + 1),
       image: `img-${i}.jpg`,
     })) as Product[];
 
-    componentRef.setInput('products', fifteenProducts);
+    componentRef.setInput('products', eighteenProducts);
     fixture.detectChanges();
 
-    expect(component.displayProducts().length).toBe(15);
+    expect(component.displayProducts().length).toBe(18);
   });
 
   it('should calibrate animation duration within the ~75s to 95s range dynamically', () => {
@@ -131,11 +131,16 @@ describe('FeaturedSlider', () => {
     componentRef.setInput('products', mockProducts);
     fixture.detectChanges();
 
+    const marquee: HTMLElement = fixture.nativeElement.querySelector('.marquee');
+    expect(marquee).toBeTruthy();
+
     const groups: NodeListOf<HTMLElement> =
       fixture.nativeElement.querySelectorAll('.marquee__group');
     expect(groups.length).toBe(2);
     expect(groups[0].getAttribute('aria-hidden')).toBeNull();
     expect(groups[1].getAttribute('aria-hidden')).toBe('true');
+    expect(groups[0].parentElement).toBe(marquee);
+    expect(groups[1].parentElement).toBe(marquee);
   });
 
   it('should call cartService.addToCart, stopPropagation and preventDefault on onAddToCart', fakeAsync(() => {
