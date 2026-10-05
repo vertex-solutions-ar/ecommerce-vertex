@@ -3,6 +3,11 @@ import { CommonModule, CurrencyPipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import type { Product } from '@core/models/product.model';
 
+const MIN_MARQUEE_ITEMS = 12;
+const SECONDS_PER_UNIQUE_PRODUCT = 6;
+const MIN_ANIMATION_DURATION_SECONDS = 45;
+const MAX_ANIMATION_DURATION_SECONDS = 65;
+
 @Component({
   selector: 'app-featured-slider',
   standalone: true,
@@ -19,7 +24,8 @@ export class FeaturedSlider {
 
   /**
    * Garantiza que la pista del carrusel cuente con suficientes elementos duplicados
-   * para cubrir pantallas anchas y permitir un desplazamiento continuo sin saltos visuales.
+   * para cubrir pantallas anchas y ultra-wide (3440px+), asegurando un desplazamiento
+   * continuo determinista y sin vacíos visuales.
    */
   readonly displayProducts = computed<Product[]>(() => {
     const list = this.products();
@@ -27,17 +33,25 @@ export class FeaturedSlider {
       return [];
     }
     let duplicated = [...list];
-    while (duplicated.length < 10) {
+    while (duplicated.length < MIN_MARQUEE_ITEMS) {
       duplicated = [...duplicated, ...list];
     }
     return duplicated;
   });
 
   /**
-   * Duración dinámica del desplazamiento continuo según la cantidad de ítems.
+   * Duración dinámica del desplazamiento continuo en un rango pausado y elegante (~45s a 65s),
+   * asignando 6 segundos por producto único para lectura cómoda de títulos y precios.
    */
   readonly animationDuration = computed<string>(() => {
-    const count = this.displayProducts().length;
-    return `${Math.max(25, count * 3.5)}s`;
+    const uniqueCount = this.products().length;
+    if (uniqueCount === 0) {
+      return `${MIN_ANIMATION_DURATION_SECONDS}s`;
+    }
+    const computedDuration = Math.min(
+      MAX_ANIMATION_DURATION_SECONDS,
+      Math.max(MIN_ANIMATION_DURATION_SECONDS, uniqueCount * SECONDS_PER_UNIQUE_PRODUCT),
+    );
+    return `${computedDuration}s`;
   });
 }

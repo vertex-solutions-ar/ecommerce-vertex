@@ -35,14 +35,14 @@ describe('FeaturedSlider', () => {
     expect(component.displayProducts()).toEqual([]);
   });
 
-  it('should set custom title and render products properly', () => {
+  it('should set custom title and render products properly without shipping badge', () => {
     componentRef.setInput('title', 'Imperdibles de la Semana');
     componentRef.setInput('products', mockProducts);
     fixture.detectChanges();
 
     expect(component.hasProducts()).toBeTrue();
     expect(component.title()).toBe('Imperdibles de la Semana');
-    expect(component.displayProducts().length).toBeGreaterThanOrEqual(10);
+    expect(component.displayProducts().length).toBeGreaterThanOrEqual(12);
     expect(component.animationDuration()).toContain('s');
 
     const titleElement: HTMLElement =
@@ -51,6 +51,11 @@ describe('FeaturedSlider', () => {
 
     const productCards = fixture.nativeElement.querySelectorAll('.marquee__item');
     expect(productCards.length).toBeGreaterThan(0);
+
+    // Verificación de eliminación del texto y etiqueta 'Envío gratis'
+    const shippingElements = fixture.nativeElement.querySelectorAll('.product-card__shipping');
+    expect(shippingElements.length).toBe(0);
+    expect(fixture.nativeElement.textContent).not.toContain('Envío gratis');
   });
 
   it('should handle empty product list gracefully', () => {
@@ -63,7 +68,22 @@ describe('FeaturedSlider', () => {
     expect(section).toBeNull();
   });
 
-  it('should not duplicate beyond necessary if already 10 or more products', () => {
+  it('should duplicate items when count is low (7 items) to cover ultra-wide monitors', () => {
+    const sevenProducts: Product[] = Array.from({ length: 7 }, (_, i) => ({
+      id: `p-${i}`,
+      name: `Producto ${i}`,
+      price: 1000 * (i + 1),
+      image: `img-${i}.jpg`,
+    })) as Product[];
+
+    componentRef.setInput('products', sevenProducts);
+    fixture.detectChanges();
+
+    // 7 ítems se duplican a 14 para superar el umbral de 12 y cubrir viewports ultra-wide
+    expect(component.displayProducts().length).toBe(14);
+  });
+
+  it('should not duplicate beyond necessary if already 12 or more products', () => {
     const manyProducts: Product[] = Array.from({ length: 12 }, (_, i) => ({
       id: `p-${i}`,
       name: `Producto ${i}`,
@@ -75,5 +95,42 @@ describe('FeaturedSlider', () => {
     fixture.detectChanges();
 
     expect(component.displayProducts().length).toBe(12);
+  });
+
+  it('should calibrate animation duration within the ~45s to 65s range dynamically', () => {
+    // Caso con pocos productos (5 productos) -> límite inferior 45s
+    componentRef.setInput('products', mockProducts);
+    expect(component.animationDuration()).toBe('45s');
+
+    // Caso con 10 productos -> 10 * 6s = 60s
+    const tenProducts: Product[] = Array.from({ length: 10 }, (_, i) => ({
+      id: `p-${i}`,
+      name: `Producto ${i}`,
+      price: 1000 * (i + 1),
+      image: `img-${i}.jpg`,
+    })) as Product[];
+    componentRef.setInput('products', tenProducts);
+    expect(component.animationDuration()).toBe('60s');
+
+    // Caso con muchos productos (15 productos) -> límite superior 65s
+    const fifteenProducts: Product[] = Array.from({ length: 15 }, (_, i) => ({
+      id: `p-${i}`,
+      name: `Producto ${i}`,
+      price: 1000 * (i + 1),
+      image: `img-${i}.jpg`,
+    })) as Product[];
+    componentRef.setInput('products', fifteenProducts);
+    expect(component.animationDuration()).toBe('65s');
+  });
+
+  it('should render two mirrored blocks (accessible and decorative aria-hidden)', () => {
+    componentRef.setInput('products', mockProducts);
+    fixture.detectChanges();
+
+    const groups: NodeListOf<HTMLElement> =
+      fixture.nativeElement.querySelectorAll('.marquee__group');
+    expect(groups.length).toBe(2);
+    expect(groups[0].getAttribute('aria-hidden')).toBeNull();
+    expect(groups[1].getAttribute('aria-hidden')).toBe('true');
   });
 });
