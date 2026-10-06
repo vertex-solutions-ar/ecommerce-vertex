@@ -178,6 +178,97 @@ describe('createPaymentPreference', () => {
     });
   });
 
+  it('creates payment preference using variant price when variant defines a custom price', async () => {
+    const validData = {
+      items: [
+        {
+          productId: 'prod-1',
+          variantId: 'var-custom-price',
+          title: 'Camiseta Premium',
+          quantity: 1,
+          unit_price: 2400,
+        },
+      ],
+      external_reference: 'order-123-custom',
+      projectId: 'vtx-sd-c3732d17',
+    };
+
+    const mockOrderData = {
+      status: 'pending',
+      storeId: 'store-test',
+    };
+
+    const mockProductData = {
+      price: 1500,
+      finalPrice: 1500,
+    };
+
+    const mockVariantData = {
+      stock: 10,
+      price: 2400,
+    };
+
+    const mockTransaction = {
+      get: vi.fn().mockImplementation(async (ref: any) => {
+        if (ref.id === 'order-123-custom') {
+          return { exists: true, data: () => mockOrderData };
+        }
+        if (ref.id === 'prod-1') {
+          return { exists: true, data: () => mockProductData };
+        }
+        if (ref.id === 'var-custom-price') {
+          return { exists: true, data: () => mockVariantData };
+        }
+        return { exists: false, data: () => null };
+      }),
+      update: vi.fn(),
+    };
+
+    mockRunTransaction.mockImplementation(async (cb: any) => {
+      return await cb(mockTransaction);
+    });
+
+    mockCreatePreference.mockResolvedValueOnce({
+      id: 'pref-mp-custom',
+      init_point: 'https://mercadopago.com/checkout/custom',
+      date_of_expiration: new Date().toISOString(),
+    });
+
+    const mockDoc = (docId: string) => ({
+      id: docId,
+      collection: vi.fn(() => ({
+        doc: (vId: string) => mockDoc(vId),
+      })),
+    });
+
+    mockTenantDbCollection.mockImplementation((colName: string) => ({
+      doc: (docId: string) => mockDoc(docId),
+    }));
+
+    const response = await paymentHandler({ data: validData });
+
+    expect(mockRunTransaction).toHaveBeenCalled();
+    expect(mockCreatePreference).toHaveBeenCalledWith(
+      expect.objectContaining({
+        external_reference: 'order-123-custom',
+        items: [
+          {
+            productId: 'prod-1',
+            variantId: 'var-custom-price',
+            title: 'Camiseta Premium',
+            quantity: 1,
+            unit_price: 2400,
+          },
+        ],
+      }),
+      'store-test',
+    );
+    expect(response).toEqual({
+      id: 'pref-mp-custom',
+      init_point: 'https://mercadopago.com/checkout/custom',
+    });
+  });
+
   it('creates payment preference for simple products without variant documents', async () => {
     const validData = {
       items: [

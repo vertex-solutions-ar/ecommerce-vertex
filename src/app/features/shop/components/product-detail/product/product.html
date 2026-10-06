@@ -23,7 +23,7 @@
 
         <div class="product-info">
           <h1 class="product-info__title">{{ p.name }}</h1>
-          <p class="product-info__price">{{ p.price | currency: 'ARS' : '$' }}</p>
+          <p class="product-info__price">{{ currentPrice() | currency: 'ARS' : '$' }}</p>
           <p class="product-info__description">{{ p.description }}</p>
 
           @if (!isSimpleProduct()) {

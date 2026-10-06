@@ -489,18 +489,18 @@ select.glass-input {
 
 .variant-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr 1fr auto;
   grid-template-areas:
-    'attributes attributes'
-    'stock action';
+    'attributes attributes attributes'
+    'price stock action';
   gap: 0.75rem;
   transition: all 0.3s ease;
   align-items: flex-end;
   padding: 0.75rem;
 
   @media (min-width: 768px) {
-    grid-template-columns: 1fr 120px auto;
-    grid-template-areas: 'attributes stock action';
+    grid-template-columns: 1fr 140px 120px auto;
+    grid-template-areas: 'attributes price stock action';
     padding: 1rem;
     gap: 1rem;
   }
@@ -520,6 +520,10 @@ select.glass-input {
   @media (min-width: 768px) {
     gap: 1rem;
   }
+}
+
+.variant-price-item {
+  grid-area: price;
 }
 
 .variant-stock-item {

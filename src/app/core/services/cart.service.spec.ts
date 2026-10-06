@@ -88,6 +88,44 @@ describe('CartService', () => {
       expect(service.cart().total).toBe(150);
     });
 
+    it('should use variant-specific price when defined and calculate total accordingly', () => {
+      const product = makeProduct({ id: 'prod-1', price: 100 });
+      const variantWithPrice = makeVariant({ id: 'var-1', price: 150 });
+      service.addItem(product, variantWithPrice, 2);
+
+      const item = service.cart().items[0];
+      expect(item.price).toBe(150);
+      expect(item.unitPrice).toBe(150);
+      expect(service.cart().total).toBe(300);
+    });
+
+    it('should inherit base product price when variant has no price defined', () => {
+      const product = makeProduct({ id: 'prod-1', price: 100 });
+      const variantWithoutPrice = makeVariant({ id: 'var-1' });
+      service.addItem(product, variantWithoutPrice, 2);
+
+      const item = service.cart().items[0];
+      expect(item.price).toBe(100);
+      expect(item.unitPrice).toBe(100);
+      expect(service.cart().total).toBe(200);
+    });
+
+    it('should allow multiple variants of the same product to coexist as separate lines without overwriting', () => {
+      const product = makeProduct({ id: 'prod-1', price: 100 });
+      const variantA = makeVariant({ id: 'var-a', attributes: { size: 'S' }, price: 90 });
+      const variantB = makeVariant({ id: 'var-b', attributes: { size: 'L' }, price: 120 });
+
+      service.addItem(product, variantA, 1);
+      service.addItem(product, variantB, 2);
+
+      expect(service.cart().items.length).toBe(2);
+      expect(service.cart().items[0].unitPrice).toBe(90);
+      expect(service.cart().items[0].quantity).toBe(1);
+      expect(service.cart().items[1].unitPrice).toBe(120);
+      expect(service.cart().items[1].quantity).toBe(2);
+      expect(service.cart().total).toBe(90 * 1 + 120 * 2);
+    });
+
     it('should increase quantity when same variant is added again', () => {
       service.addItem(makeProduct(), makeVariant(), 2);
       service.addItem(makeProduct(), makeVariant(), 3);
@@ -392,6 +430,7 @@ describe('CartService', () => {
         variantId: 'var-keep',
         name: 'Producto Vivo',
         price: 100,
+        unitPrice: 100,
         quantity: 1,
         attributes: {},
         stock: 5,
@@ -402,6 +441,7 @@ describe('CartService', () => {
         variantId: 'var-ghost',
         name: 'Producto Borrado',
         price: 100,
+        unitPrice: 100,
         quantity: 1,
         attributes: {},
         stock: 1,
@@ -427,6 +467,7 @@ describe('CartService', () => {
             variantId: 'var-sin',
             name: 'Sin Stock',
             price: 100,
+            unitPrice: 100,
             quantity: 1,
             attributes: {},
             stock: 0,
@@ -504,6 +545,129 @@ describe('CartService', () => {
         'Stock insuficiente',
         'No puedes añadir 4. Stock disponible: 3.',
       );
+    });
+  });
+
+  describe('Composite key and variant pricing branch coverage', () => {
+    it('should default quantity to 1 when calling addToCart without quantity', () => {
+      const prod = makeProduct({ id: 'prod-def-q', stock: 5 });
+      service.addToCart(prod);
+
+      expect(service.cart().items.length).toBe(1);
+      expect(service.cart().items[0].quantity).toBe(1);
+    });
+
+    it('should fallback to 0 available stock when product has neither stock nor totalStock', () => {
+      const prodNoStock = makeProduct({ id: 'prod-none', stock: undefined, totalStock: undefined });
+      service.addItem(prodNoStock, null, 1);
+
+      expect(service.cart().items.length).toBe(0);
+      expect(sweetAlertSpy.error).toHaveBeenCalledWith(
+        'Stock insuficiente',
+        'No puedes añadir 1. Stock disponible: 0.',
+      );
+    });
+
+    it('should use item.price when item.unitPrice is undefined in calculateTotal', () => {
+      service.cart.set({
+        items: [
+          {
+            id: 'legacy-item',
+            productId: 'prod-leg',
+            name: 'Legacy Item',
+            price: 150,
+            unitPrice: undefined as unknown as number,
+            quantity: 2,
+            attributes: {},
+            stock: 10,
+          },
+        ],
+        total: 0,
+      });
+
+      service.updateQuantity('legacy-item', 2);
+      expect(service.cart().total).toBe(300);
+    });
+
+    it('should allow variant item and identical simple product to coexist without overwriting each other', () => {
+      const prod = makeProduct({ id: 'prod-dual', price: 100, stock: 10, totalStock: 10 });
+      const variant = makeVariant({ id: 'var-dual', productId: 'prod-dual', price: 150, stock: 5 });
+
+      service.addItem(prod, variant, 1);
+      service.addItem(prod, null, 1);
+
+      const items = service.cart().items;
+      expect(items.length).toBe(2);
+      expect(items.find((i) => i.variantId === 'var-dual')?.price).toBe(150);
+      expect(items.find((i) => i.variantId === null)?.price).toBe(100);
+    });
+
+    it('should update quantity using composite key for variant item and productId for simple item', () => {
+      const prod = makeProduct({ id: 'prod-test', price: 50, stock: 10, totalStock: 10 });
+      const variant = makeVariant({ id: 'var-test', productId: 'prod-test', price: 75, stock: 8 });
+
+      service.addItem(prod, variant, 1);
+      service.addItem(prod, null, 1);
+
+      service.updateQuantity('prod-test_var-test', 3);
+      expect(service.cart().items.find((i) => i.variantId === 'var-test')?.quantity).toBe(3);
+
+      service.updateQuantity('prod-test', 4);
+      expect(service.cart().items.find((i) => i.variantId === null)?.quantity).toBe(4);
+    });
+
+    it('should update quantity and remove item using variant.id direct match', () => {
+      const prod = makeProduct({ id: 'prod-direct', price: 50, stock: 10, totalStock: 10 });
+      const variant = makeVariant({
+        id: 'var-direct',
+        productId: 'prod-direct',
+        price: 75,
+        stock: 8,
+      });
+
+      service.addItem(prod, variant, 1);
+
+      service.updateQuantity('var-direct', 2);
+      expect(service.cart().items[0].quantity).toBe(2);
+
+      service.removeItem('var-direct');
+      expect(service.cart().items.length).toBe(0);
+    });
+
+    it('should remove items using composite key and simple product using productId', () => {
+      const prod = makeProduct({ id: 'prod-rem', price: 10, stock: 10, totalStock: 10 });
+      const variant = makeVariant({ id: 'var-rem', productId: 'prod-rem', stock: 5 });
+
+      service.addItem(prod, variant, 1);
+      service.addItem(prod, null, 1);
+      expect(service.cart().items.length).toBe(2);
+
+      service.removeItem('prod-rem_var-rem');
+      expect(service.cart().items.length).toBe(1);
+      expect(service.cart().items[0].variantId).toBeNull();
+
+      service.removeItem('prod-rem');
+      expect(service.cart().items.length).toBe(0);
+    });
+
+    it('pruneUnavailableItems should return empty array early when cart is empty', async () => {
+      service.clearCart();
+      productServiceSpy.getProducts.and.returnValue(of([]));
+
+      const removed = await service.pruneUnavailableItems();
+      expect(removed).toEqual([]);
+      expect(service.cart().items.length).toBe(0);
+    });
+
+    it('pruneUnavailableItems should return currentCart unchanged when all items are available', async () => {
+      const prod = makeProduct({ id: 'prod-valid', totalStock: 10 });
+      service.addItem(prod, null, 2);
+      productServiceSpy.getProducts.and.returnValue(of([prod]));
+
+      const removed = await service.pruneUnavailableItems();
+      expect(removed).toEqual([]);
+      expect(service.cart().items.length).toBe(1);
+      expect(service.cart().items[0].productId).toBe('prod-valid');
     });
   });
 });

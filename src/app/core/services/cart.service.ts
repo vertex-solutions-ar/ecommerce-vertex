@@ -70,7 +70,7 @@ export class CartService {
   }
 
   private calculateTotal(items: CartItem[]): number {
-    return items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    return items.reduce((acc, item) => acc + (item.unitPrice ?? item.price) * item.quantity, 0);
   }
 
   getVariantDescription(attributes: { [key: string]: string }): string {
@@ -98,7 +98,12 @@ export class CartService {
     this.addItem(product, null, quantity);
   }
 
-  addItem(product: Product, variant: ProductVariant | null | undefined, quantity: number): void {
+  addItem(
+    product: Product,
+    variant: ProductVariant | null | undefined,
+    quantity: number,
+    unitPrice?: number,
+  ): void {
     const availableStock = variant ? variant.stock : (product.stock ?? product.totalStock ?? 0);
 
     if (quantity > availableStock) {
@@ -110,12 +115,13 @@ export class CartService {
     }
 
     const cartItemId = variant ? variant.id : product.id;
+    const targetKey = variant?.id ? `${product.id}_${variant.id}` : product.id;
 
     this.cart.update((currentCart) => {
-      const existingItem = currentCart.items.find(
-        (item) =>
-          item.productId === product.id && (item.variantId ?? null) === (variant?.id ?? null),
-      );
+      const existingItem = currentCart.items.find((item) => {
+        const itemKey = item.variantId ? `${item.productId}_${item.variantId}` : item.productId;
+        return itemKey === targetKey;
+      });
       let newItems: CartItem[];
 
       if (existingItem) {
@@ -135,12 +141,19 @@ export class CartService {
         const itemName = variantDescription
           ? `${product.name} (${variantDescription})`
           : product.name;
+        const resolvedUnitPrice =
+          unitPrice ??
+          (variant?.price !== null && variant?.price !== undefined && variant.price > 0
+            ? variant.price
+            : product.price);
         const newItem: CartItem = {
           id: cartItemId,
           productId: product.id,
           variantId: variant?.id ?? null,
+          variantTitle: variantDescription || undefined,
           name: itemName,
-          price: product.price,
+          price: resolvedUnitPrice,
+          unitPrice: resolvedUnitPrice,
           quantity,
           image: variant?.image ?? product.image,
           attributes: variant?.attributes ?? {},
@@ -155,7 +168,10 @@ export class CartService {
 
   updateQuantity(itemId: string, quantity: number): void {
     this.cart.update((currentCart) => {
-      const itemToUpdate = currentCart.items.find((item) => item.id === itemId);
+      const itemToUpdate = currentCart.items.find((item) => {
+        const itemKey = item.variantId ? `${item.productId}_${item.variantId}` : item.productId;
+        return item.id === itemId || itemKey === itemId || item.variantId === itemId;
+      });
       let newQuantity = quantity;
 
       if (!itemToUpdate) {
@@ -175,7 +191,7 @@ export class CartService {
       }
 
       const newItems = currentCart.items.map((item) =>
-        item.id === itemId ? { ...item, quantity: newQuantity } : item,
+        item === itemToUpdate ? { ...item, quantity: newQuantity } : item,
       );
 
       return { items: newItems, total: this.calculateTotal(newItems) };
@@ -184,7 +200,10 @@ export class CartService {
 
   removeItem(itemId: string): void {
     this.cart.update((currentCart) => {
-      const newItems = currentCart.items.filter((item) => item.id !== itemId);
+      const newItems = currentCart.items.filter((item) => {
+        const itemKey = item.variantId ? `${item.productId}_${item.variantId}` : item.productId;
+        return item.id !== itemId && itemKey !== itemId && item.variantId !== itemId;
+      });
       this.sweetAlertService.success('Eliminado', 'El producto ha sido eliminado del carrito.');
       return { items: newItems, total: this.calculateTotal(newItems) };
     });
