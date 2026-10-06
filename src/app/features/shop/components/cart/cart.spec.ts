@@ -13,6 +13,7 @@ const makeCartItem = (overrides: Partial<CartItem> = {}): CartItem => ({
   variantId: 'var-1',
   name: 'Test Product (Color: Red)',
   price: 100,
+  unitPrice: 100,
   quantity: 2,
   image: 'https://example.com/img.jpg',
   attributes: { color: 'Red' },

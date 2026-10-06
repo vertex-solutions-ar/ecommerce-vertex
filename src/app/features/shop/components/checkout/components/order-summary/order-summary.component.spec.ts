@@ -14,6 +14,7 @@ describe('OrderSummary', () => {
       variantId: 'v1',
       name: 'Remera',
       price: 2000,
+      unitPrice: 2000,
       quantity: 2,
       image: 'img.jpg',
       attributes: {},

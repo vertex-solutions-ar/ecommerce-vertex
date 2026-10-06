@@ -95,6 +95,82 @@ describe('ProductVariantFormService', () => {
     });
   });
 
+  it('should initialize price control with variant price or null if undefined or null', () => {
+    const variantWithPrice: ProductVariant = {
+      id: 'v1',
+      productId: 'p1',
+      attributes: { color: 'Rojo' },
+      stock: 10,
+      price: 3500,
+    };
+    const groupWithPrice = service.createVariantGroup(['color'], variantWithPrice);
+    expect(groupWithPrice.get('price')?.value).toBe(3500);
+
+    const variantWithoutPrice: ProductVariant = {
+      id: 'v2',
+      productId: 'p1',
+      attributes: { color: 'Azul' },
+      stock: 5,
+    };
+    const groupWithoutPrice = service.createVariantGroup(['color'], variantWithoutPrice);
+    expect(groupWithoutPrice.get('price')?.value).toBeNull();
+
+    const groupNoVariant = service.createVariantGroup(['color']);
+    expect(groupNoVariant.get('price')?.value).toBeNull();
+  });
+
+  it('should use variant-specific price when provided in formVariants', () => {
+    const formVariants: ProductVariantFormValue[] = [
+      { id: 'v1', attributes: { color: 'Azul' }, stock: 5, price: 1500 },
+      { id: null, attributes: { color: 'Verde' }, stock: 15, price: 2000 },
+    ];
+    const initialVariants: ProductVariant[] = [
+      { id: 'v1', productId: 'p1', attributes: { color: 'Rojo' }, stock: 10 },
+    ];
+
+    const changes = service.buildEditChanges(formVariants, initialVariants, 999);
+
+    expect(changes.toUpdate[0]).toEqual({
+      id: 'v1',
+      attributes: { color: 'Azul' },
+      stock: 5,
+      price: 1500,
+    });
+    expect(changes.toAdd[0]).toEqual({
+      attributes: { color: 'Verde' },
+      stock: 15,
+      price: 2000,
+    });
+  });
+
+  it('should sanitize variant price when value is null, empty string or <= 0', () => {
+    const formVariants: ProductVariantFormValue[] = [
+      { id: 'v1', attributes: { color: 'Azul' }, stock: 5, price: null },
+      { id: 'v2', attributes: { color: 'Rojo' }, stock: 8, price: '' as unknown as number },
+      { id: 'v3', attributes: { color: 'Verde' }, stock: 3, price: 0 },
+      { id: null, attributes: { color: 'Negro' }, stock: 10, price: -100 },
+    ];
+    const initialVariants: ProductVariant[] = [
+      { id: 'v1', productId: 'p1', attributes: { color: 'Azul' }, stock: 5 },
+      { id: 'v2', productId: 'p1', attributes: { color: 'Rojo' }, stock: 8 },
+      { id: 'v3', productId: 'p1', attributes: { color: 'Verde' }, stock: 3 },
+    ];
+
+    // Case A: with basePrice -> all fallback to basePrice
+    const changesWithBase = service.buildEditChanges(formVariants, initialVariants, 1200);
+    expect(changesWithBase.toUpdate[0].price).toBe(1200);
+    expect(changesWithBase.toUpdate[1].price).toBe(1200);
+    expect(changesWithBase.toUpdate[2].price).toBe(1200);
+    expect((changesWithBase.toAdd[0] as Partial<ProductVariant>).price).toBe(1200);
+
+    // Case B: without basePrice -> price is omitted/undefined
+    const changesWithoutBase = service.buildEditChanges(formVariants, initialVariants, undefined);
+    expect(changesWithoutBase.toUpdate[0].price).toBeUndefined();
+    expect(changesWithoutBase.toUpdate[1].price).toBeUndefined();
+    expect(changesWithoutBase.toUpdate[2].price).toBeUndefined();
+    expect((changesWithoutBase.toAdd[0] as Partial<ProductVariant>).price).toBeUndefined();
+  });
+
   it('should build simple product data object with direct stock', () => {
     const formValue: ProductFormValue = {
       name: 'Remera Simple',

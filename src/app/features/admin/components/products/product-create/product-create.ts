@@ -448,7 +448,6 @@ export class ProductCreate implements OnInit, AfterViewInit {
           const editChanges = this.variantFormService.buildEditChanges(
             formValue.variants,
             this.initialVariants,
-            formValue.price,
           );
           toUpdate = editChanges.toUpdate;
           toAdd = editChanges.toAdd;
@@ -483,11 +482,21 @@ export class ProductCreate implements OnInit, AfterViewInit {
       } else {
         const productData = this.variantFormService.buildProductData(formValue);
         const variantsData =
-          hasAttributes && formValue.variants && formValue.variants.length > 0
-            ? formValue.variants.map((v) => ({
-                attributes: v.attributes ?? {},
-                stock: Number(v.stock) || 0,
-              }))
+          hasAttributes && formValue.variants?.length
+            ? formValue.variants.map((v) => {
+                const price = Number(v.price);
+                const hasPrice =
+                  v.price !== null &&
+                  v.price !== undefined &&
+                  v.price !== ('' as unknown) &&
+                  !isNaN(price) &&
+                  price > 0;
+                return {
+                  attributes: v.attributes ?? {},
+                  stock: Number(v.stock) || 0,
+                  ...(hasPrice ? { price } : {}),
+                };
+              })
             : [];
         const newId = await this.productService.createProductWithVariants(
           productData,

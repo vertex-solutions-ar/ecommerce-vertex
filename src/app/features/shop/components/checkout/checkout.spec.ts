@@ -85,6 +85,7 @@ describe('Checkout', () => {
     variantId: 'var-1',
     name: 'Producto Test',
     price: 1500,
+    unitPrice: 1500,
     quantity: 2,
     image: 'https://example.com/img.jpg',
     attributes: {},
