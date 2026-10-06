@@ -8,12 +8,12 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { RouterModule } from '@angular/router';
-
+import { Router, RouterModule } from '@angular/router';
 import type { HeroBanner } from '@core/models/home-content.model';
 import type { Product } from '@core/models/product.model';
 import { HomeContentService } from '@core/services/home-content.service';
 import { ProductService } from '@core/services/product.service';
+import { CartService } from '@core/services/cart.service';
 import { Carousel } from '@shared/components/carousel/carousel';
 import { FeaturedSlider } from './components/featured-slider/featured-slider';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -27,17 +27,29 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Home implements OnInit {
-  private homeContentService = inject(HomeContentService);
-  private productService = inject(ProductService);
-  private destroyRef = inject(DestroyRef);
+  private readonly homeContentService = inject(HomeContentService);
+  private readonly productService = inject(ProductService);
+  private readonly cartService = inject(CartService);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+
+  private readonly timeouts = new Set<ReturnType<typeof setTimeout>>();
 
   // Signals: undefined = loading, null = no data, value = loaded
   readonly heroBanner = signal<HeroBanner | null | undefined>(undefined);
   readonly newArrivals = signal<Product[] | undefined>(undefined);
   readonly featuredProducts = signal<Product[]>([]);
+  readonly addedProductIds = signal<ReadonlySet<string>>(new Set());
 
   readonly bannerLoading = computed(() => this.heroBanner() === undefined);
   readonly productsLoading = computed(() => this.newArrivals() === undefined);
+
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.timeouts.forEach((timer) => clearTimeout(timer));
+      this.timeouts.clear();
+    });
+  }
 
   ngOnInit(): void {
     this.homeContentService
@@ -103,5 +115,48 @@ export class Home implements OnInit {
     const y = event.clientY - rect.top;
     button.style.setProperty('--x', `${x}px`);
     button.style.setProperty('--y', `${y}px`);
+  }
+
+  /**
+   * Comprueba si un producto específico ha sido añadido recientemente al carrito.
+   */
+  isAdded(productId: string): boolean {
+    return this.addedProductIds().has(productId);
+  }
+
+  /**
+   * Manejador para agregar un producto al carrito de forma rápida (Quick-Add a 1 clic).
+   * Detiene la propagación del evento para evitar la navegación a la página de detalle.
+   * Si el producto requiere selección obligatoria de variantes, redirige al detalle.
+   */
+  onAddToCart(event: Event, product: Product): void {
+    event.stopPropagation();
+    event.preventDefault();
+
+    if (product.variants && product.variants.length > 1) {
+      void this.router.navigate(['/product', product.id]);
+      return;
+    }
+
+    this.cartService.addToCart(product, 1);
+
+    if (product.id) {
+      this.addedProductIds.update((current) => {
+        const next = new Set(current);
+        next.add(product.id);
+        return next;
+      });
+
+      const timer = setTimeout(() => {
+        this.timeouts.delete(timer);
+        this.addedProductIds.update((current) => {
+          const next = new Set(current);
+          next.delete(product.id);
+          return next;
+        });
+      }, 1500);
+
+      this.timeouts.add(timer);
+    }
   }
 }
