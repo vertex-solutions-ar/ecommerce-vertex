@@ -47,7 +47,39 @@ export class Product {
   galleryImages = signal<string[]>([]);
 
   attributes = signal<AttributeSelection[]>([]);
+  selectedAttributes = signal<Record<string, string>>({});
   selectedVariant = signal<ProductVariant | null | undefined>(undefined);
+
+  readonly matchedVariant = computed(() => {
+    if (this.isSimpleProduct()) {
+      return null;
+    }
+    const variants = this.variants();
+    const product = this.product();
+    if (!product || variants.length === 0) {
+      return undefined;
+    }
+    const variantAttrs = product.variantAttributes ?? [];
+    if (variantAttrs.length === 0) {
+      return variants[0] ?? null;
+    }
+    const selected = this.selectedAttributes();
+    const allSelected = variantAttrs.every((attrId) => Boolean(selected[attrId]));
+    if (!allSelected) {
+      return undefined;
+    }
+    return (
+      variants.find((v) =>
+        variantAttrs.every((attrId) => v.attributes?.[attrId] === selected[attrId]),
+      ) ?? null
+    );
+  });
+
+  readonly currentPrice = computed(() => {
+    const v = this.matchedVariant();
+    const base = this.product()?.price ?? 0;
+    return v?.price !== null && v?.price !== undefined && v.price > 0 ? v.price : base;
+  });
 
   allAttributes = signal<Attribute[]>([]);
   private allPossibleValues = new Map<string, string[]>();
@@ -149,6 +181,7 @@ export class Product {
     });
 
     this.attributes.set(attributeSelections);
+    this.selectedAttributes.set({});
 
     if (attributeSelections.length === 0 && variants.length > 0) {
       this.selectedVariant.set(variants[0]);
@@ -168,6 +201,15 @@ export class Product {
     );
 
     this.updateAvailableOptions();
+
+    const selected: Record<string, string> = {};
+    for (const attr of this.attributes()) {
+      if (attr.selectedValue) {
+        selected[attr.id] = attr.selectedValue;
+      }
+    }
+    this.selectedAttributes.set(selected);
+
     this.findSelectedVariant();
   }
 
@@ -206,27 +248,10 @@ export class Product {
   }
 
   private findSelectedVariant(): void {
-    const allSelected = this.attributes().every((a) => a.selectedValue);
-    if (!allSelected) {
-      this.selectedVariant.set(undefined);
-      return;
-    }
-
-    const selection = this.attributes().reduce(
-      (acc, a) => {
-        acc[a.id] = a.selectedValue;
-        return acc;
-      },
-      {} as { [key: string]: string | null },
-    );
-
-    const variant = this.variants().find((v) => {
-      return Object.entries(selection).every(([key, value]) => v.attributes[key] === value);
-    });
-
-    this.selectedVariant.set(variant ?? null);
-    if (variant) {
-      this.mainImage.set(variant.image ?? this.product()?.image ?? '');
+    const matched = this.matchedVariant();
+    this.selectedVariant.set(matched);
+    if (matched) {
+      this.mainImage.set(matched.image ?? this.product()?.image ?? '');
       this.quantity.set(1);
     }
   }

@@ -8,6 +8,7 @@ export interface ProductVariantFormValue {
   id: string | null;
   attributes: Record<string, string>;
   stock: number;
+  price?: number | null;
 }
 
 export interface ProductFormValue {
@@ -116,6 +117,7 @@ export class ProductVariantFormService {
       id: [variant?.id ?? null],
       attributes: attributesGroup,
       stock: [variant?.stock ?? 0, [Validators.required, Validators.min(0)]],
+      price: [variant?.price ?? null, [Validators.min(0)]],
     });
   }
 
@@ -129,12 +131,23 @@ export class ProductVariantFormService {
     const currentIds = new Set<string>();
 
     formVariants.forEach((v) => {
+      const sanitizedPrice =
+        v.price !== null &&
+        v.price !== undefined &&
+        v.price !== ('' as unknown) &&
+        !isNaN(Number(v.price)) &&
+        Number(v.price) > 0
+          ? Number(v.price)
+          : typeof basePrice === 'number'
+            ? basePrice
+            : undefined;
+
       const variantPayload: Partial<ProductVariant> = {
         attributes: v.attributes,
         stock: v.stock,
       };
-      if (typeof basePrice === 'number') {
-        variantPayload.price = basePrice;
+      if (sanitizedPrice !== undefined) {
+        variantPayload.price = sanitizedPrice;
       }
       if (v.id) {
         toUpdate.push({ id: v.id, ...variantPayload });
@@ -143,7 +156,7 @@ export class ProductVariantFormService {
         toAdd.push({
           attributes: v.attributes,
           stock: v.stock,
-          ...(typeof basePrice === 'number' ? { price: basePrice } : {}),
+          ...(sanitizedPrice !== undefined ? { price: sanitizedPrice } : {}),
         });
       }
     });
