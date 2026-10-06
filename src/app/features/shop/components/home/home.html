@@ -102,8 +102,19 @@
                   class="product-card__image"
                   loading="lazy"
                 />
-                <button class="product-card__add-btn" aria-label="Agregar al carrito">
-                  <i class="bi bi-cart-plus"></i>
+                <button
+                  type="button"
+                  class="btn-quick-add"
+                  [class.btn-quick-add--added]="isAdded(product.id)"
+                  (click)="onAddToCart($event, product)"
+                  [attr.aria-label]="'Agregar ' + product.name + ' al carrito'"
+                  [title]="isAdded(product.id) ? 'Agregado al carrito' : 'Agregar al carrito'"
+                >
+                  @if (isAdded(product.id)) {
+                    <i class="bi bi-check-lg" aria-hidden="true"></i>
+                  } @else {
+                    <i class="bi bi-cart-plus" aria-hidden="true"></i>
+                  }
                 </button>
               </div>
               <div class="product-card__body">
@@ -111,7 +122,6 @@
                 <p class="product-card__price">
                   {{ product.price | currency: 'ARS' : '$' : '1.0-0' }}
                 </p>
-                <p class="product-card__shipping">Envío gratis</p>
               </div>
             </a>
           }
