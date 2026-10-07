@@ -465,79 +465,105 @@
                     class="variant-row glass-panel mb-3"
                     [class.variant-invalid]="variantGroup.invalid && variantGroup.touched"
                   >
-                    <div class="variant-attributes-container" formGroupName="attributes">
-                      @if (attributes$ | async; as attributes) {
-                        @for (attr of attributes; track attr.id) {
-                          @if (
-                            attr.id &&
-                            variantAttributes.value.includes(attr.id) &&
-                            variantGroup.get('attributes.' + attr.id)
-                          ) {
-                            <div class="variant-attribute-item">
-                              <label class="form-label">{{ attr.name }}</label>
-                              <select
-                                #variantSelect
-                                class="form-select glass-input hardware-accelerated"
-                                [formControlName]="attr.id"
-                                [ngClass]="{
-                                  'is-invalid':
-                                    variantGroup.get('attributes.' + attr.id)?.invalid &&
-                                    variantGroup.get('attributes.' + attr.id)?.touched,
-                                }"
-                              >
-                                <option [ngValue]="null" disabled>Seleccionar...</option>
-                                @for (val of attr.values; track val) {
-                                  <option [value]="val">{{ val }}</option>
-                                }
-                              </select>
-                            </div>
+                    <!-- Fila Superior: Atributos y Acción -->
+                    <div class="variant-header-row">
+                      <div class="variant-attributes-container" formGroupName="attributes">
+                        @if (attributes$ | async; as attributes) {
+                          @for (attr of attributes; track attr.id) {
+                            @if (
+                              attr.id &&
+                              variantAttributes.value.includes(attr.id) &&
+                              variantGroup.get('attributes.' + attr.id)
+                            ) {
+                              <div class="variant-attribute-item">
+                                <select
+                                  #variantSelect
+                                  class="form-select glass-input hardware-accelerated"
+                                  [formControlName]="attr.id"
+                                  [attr.aria-label]="attr.name"
+                                  [title]="attr.name"
+                                  [ngClass]="{
+                                    'is-invalid':
+                                      variantGroup.get('attributes.' + attr.id)?.invalid &&
+                                      variantGroup.get('attributes.' + attr.id)?.touched,
+                                  }"
+                                >
+                                  <option [ngValue]="null" disabled>{{ attr.name }}...</option>
+                                  @for (val of attr.values; track val) {
+                                    <option [value]="val">{{ val }}</option>
+                                  }
+                                </select>
+                              </div>
+                            }
                           }
                         }
-                      }
+                      </div>
+
+                      <div class="variant-action-item">
+                        <button
+                          (click)="removeVariant(getVariantRealIndex(variantGroup), $event)"
+                          type="button"
+                          class="btn-glass-danger btn-sm"
+                          aria-label="Eliminar variante"
+                        >
+                          <i class="bi bi-trash" aria-hidden="true"></i>
+                        </button>
+                      </div>
                     </div>
 
-                    <div class="variant-price-item">
-                      <label class="form-label">Precio</label>
-                      <input
-                        type="number"
-                        class="form-control glass-input"
-                        formControlName="price"
-                        [placeholder]="productForm.get('price')?.value || 'Precio base'"
-                        min="0"
-                        step="0.01"
-                        [ngClass]="{
-                          'is-invalid':
-                            variantGroup.get('price')?.invalid &&
-                            variantGroup.get('price')?.touched,
-                        }"
-                      />
-                    </div>
+                    <!-- Fila Inferior: Precio y Stock 50/50 -->
+                    <div class="variant-pricing-row">
+                      <div class="variant-price-item">
+                        <div class="input-group">
+                          <span class="input-group-text glass-addon">$</span>
+                          <input
+                            type="number"
+                            class="form-control glass-input"
+                            formControlName="price"
+                            [placeholder]="productForm.get('price')?.value || 'Precio base'"
+                            min="0"
+                            step="0.01"
+                            aria-label="Precio de variante"
+                            [ngClass]="{
+                              'is-invalid':
+                                variantGroup.get('price')?.invalid &&
+                                variantGroup.get('price')?.touched,
+                            }"
+                          />
+                        </div>
+                        @if (
+                          variantGroup.get('price')?.invalid && variantGroup.get('price')?.touched
+                        ) {
+                          <div class="invalid-feedback d-block">Precio inválido</div>
+                        }
+                      </div>
 
-                    <div class="variant-stock-item">
-                      <label class="form-label">Stock</label>
-                      <input
-                        #variantStock
-                        type="number"
-                        class="form-control glass-input"
-                        formControlName="stock"
-                        placeholder="0"
-                        [ngClass]="{
-                          'is-invalid':
-                            variantGroup.get('stock')?.invalid &&
-                            variantGroup.get('stock')?.touched,
-                        }"
-                      />
-                    </div>
-
-                    <div class="variant-action-item">
-                      <button
-                        (click)="removeVariant(getVariantRealIndex(variantGroup), $event)"
-                        type="button"
-                        class="btn-glass-danger btn-sm"
-                        aria-label="Eliminar"
-                      >
-                        <i class="bi bi-trash" aria-hidden="true"></i>
-                      </button>
+                      <div class="variant-stock-item">
+                        <div class="input-group">
+                          <span class="input-group-text glass-addon">
+                            <i class="bi bi-box-seam" aria-hidden="true"></i>
+                          </span>
+                          <input
+                            #variantStock
+                            type="number"
+                            class="form-control glass-input"
+                            formControlName="stock"
+                            placeholder="Stock"
+                            min="0"
+                            aria-label="Stock de variante"
+                            [ngClass]="{
+                              'is-invalid':
+                                variantGroup.get('stock')?.invalid &&
+                                variantGroup.get('stock')?.touched,
+                            }"
+                          />
+                        </div>
+                        @if (
+                          variantGroup.get('stock')?.invalid && variantGroup.get('stock')?.touched
+                        ) {
+                          <div class="invalid-feedback d-block">Stock requerido (mín. 0)</div>
+                        }
+                      </div>
                     </div>
                   </div>
                 }

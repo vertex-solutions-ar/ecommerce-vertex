@@ -294,7 +294,7 @@ function generateVariantCombinations(
     socialInstagramUrl: 'https://instagram.com/vertex',
     socialFacebookUrl: 'https://facebook.com/vertex',
     socialWhatsAppUrl: 'https://wa.me/5491145678900',
-    copyrightText: `© 2026 ${storeName}. Todos los derechos reservados.`,
+    copyrightText: `${storeName}. Todos los derechos reservados.`,
     updatedAt: new Date().toISOString(),
   });
 

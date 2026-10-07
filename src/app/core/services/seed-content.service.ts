@@ -220,7 +220,7 @@ export class SeedContentService {
       socialInstagramUrl: 'https://instagram.com/mitiendaonline',
       socialFacebookUrl: 'https://facebook.com/mitiendaonline',
       socialWhatsAppUrl: 'https://wa.me/5491145678900',
-      copyrightText: `© 2026 ${storeName}. Todos los derechos reservados.`,
+      copyrightText: `${storeName}. Todos los derechos reservados.`,
     };
     await this.run(() =>
       setDoc(doc(this.firestore, tenantPath('configuracion'), storeDocId('store')), payload),
