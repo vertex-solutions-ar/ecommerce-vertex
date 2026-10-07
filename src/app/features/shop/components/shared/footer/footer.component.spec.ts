@@ -186,4 +186,44 @@ describe('Footer', () => {
     const socialNav = fixture.debugElement.query(By.css('.footer__social'));
     expect(socialNav).toBeNull();
   });
+
+  describe('cleanCopyrightText', () => {
+    it('should strip redundant (c), year and copyright symbols from copyrightText', () => {
+      footerServiceSpy.getFooterData.and.returnValue(
+        of({ copyrightText: '© 2026 Mi Tienda. Todos los derechos reservados.' } as FooterData),
+      );
+      setupComponent();
+
+      expect(component.cleanCopyrightText()).toBe('Mi Tienda. Todos los derechos reservados.');
+    });
+
+    it('should strip &copy;, (c), and year ranges', () => {
+      footerServiceSpy.getFooterData.and.returnValue(
+        of({ copyrightText: '&copy; 2024-2026 Vertex Corp' } as FooterData),
+      );
+      setupComponent();
+
+      expect(component.cleanCopyrightText()).toBe('Vertex Corp');
+    });
+
+    it('should fallback to storeName when copyrightText only contains year and symbols', () => {
+      footerServiceSpy.getFooterData.and.returnValue(of({ copyrightText: '© 2026' } as FooterData));
+      mockStoreConfigSignal.set({ storeName: 'Fallback Store' } as unknown as StoreConfig);
+      setupComponent();
+
+      expect(component.cleanCopyrightText()).toBe('Fallback Store. Todos los derechos reservados.');
+    });
+
+    it('should render single year and copyright in template without duplication', () => {
+      footerServiceSpy.getFooterData.and.returnValue(
+        of({ copyrightText: '© 2026 Mi Tienda. Todos los derechos reservados.' } as FooterData),
+      );
+      setupComponent();
+
+      const copyrightEl = fixture.debugElement.query(By.css('.footer__copyright p'));
+      expect(copyrightEl.nativeElement.textContent.trim()).toBe(
+        `© ${component.currentYear} Mi Tienda. Todos los derechos reservados.`,
+      );
+    });
+  });
 });
