@@ -572,7 +572,14 @@ select.glass-input {
     display: contents;
   }
 
+  .variant-price-item,
+  .variant-stock-item {
+    width: 100%;
+    min-width: 0;
+  }
+
   .input-group {
+    width: 100%;
     height: 36px;
 
     @media (min-width: 768px) {
@@ -601,6 +608,7 @@ select.glass-input {
       font-size: 0.85rem;
       border-top-right-radius: 8px;
       border-bottom-right-radius: 8px;
+      scroll-margin-bottom: 95px;
 
       @media (min-width: 768px) {
         height: 42px;
@@ -623,13 +631,21 @@ select.glass-input {
 }
 
 .variant-price-item {
-  grid-area: price;
+  width: 100%;
   min-width: 0;
+
+  @media (min-width: 768px) {
+    grid-area: price;
+  }
 }
 
 .variant-stock-item {
-  grid-area: stock;
+  width: 100%;
   min-width: 0;
+
+  @media (min-width: 768px) {
+    grid-area: stock;
+  }
 }
 
 .variant-action-item {
