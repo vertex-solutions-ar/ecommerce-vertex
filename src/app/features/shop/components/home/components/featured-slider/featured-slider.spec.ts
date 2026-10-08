@@ -183,4 +183,19 @@ describe('FeaturedSlider', () => {
     expect(firstButton.classList.contains('btn-quick-add--added')).toBeFalse();
     expect(firstButton.querySelector('.bi-plus-lg')).toBeTruthy();
   }));
+
+  it('should maintain accessibility attributes on the marquee slider and card items', () => {
+    componentRef.setInput('products', mockProducts);
+    fixture.detectChanges();
+
+    const marquee: HTMLElement = fixture.nativeElement.querySelector('.marquee');
+    expect(marquee.getAttribute('aria-label')).toBe('Carrusel de productos destacados');
+
+    const firstCard: HTMLAnchorElement = fixture.nativeElement.querySelector('.marquee__item');
+    expect(firstCard.getAttribute('aria-label')).toBe(mockProducts[0].name);
+
+    const quickAddBtn: HTMLButtonElement = fixture.nativeElement.querySelector('.btn-quick-add');
+    expect(quickAddBtn.getAttribute('aria-label')).toBe('Agregar al carrito');
+    expect(quickAddBtn.getAttribute('type')).toBe('button');
+  });
 });
