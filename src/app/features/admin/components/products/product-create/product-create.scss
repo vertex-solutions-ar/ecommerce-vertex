@@ -14,7 +14,7 @@
 
 .product-create-wrapper {
   width: 100%;
-  padding-bottom: 0;
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
   animation: float-in 0.5s ease-out;
 
   @media (min-width: 768px) {
@@ -488,21 +488,27 @@ select.glass-input {
 }
 
 .variant-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  grid-template-areas:
-    'attributes attributes attributes'
-    'price stock action';
-  gap: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.55rem;
+  margin-bottom: 0.6rem;
+  scroll-margin-bottom: 95px;
   transition: all 0.3s ease;
-  align-items: flex-end;
-  padding: 0.75rem;
+
+  input,
+  select {
+    scroll-margin-bottom: 95px;
+  }
 
   @media (min-width: 768px) {
+    display: grid;
     grid-template-columns: 1fr 140px 120px auto;
     grid-template-areas: 'attributes price stock action';
     padding: 1rem;
     gap: 1rem;
+    margin-bottom: 1rem;
+    align-items: center;
   }
 
   &.variant-invalid {
@@ -511,39 +517,142 @@ select.glass-input {
   }
 }
 
+.variant-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+
+  @media (min-width: 768px) {
+    display: contents;
+  }
+}
+
 .variant-attributes-container {
   grid-area: attributes;
+  flex: 1;
+  min-width: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.5rem;
 
   @media (min-width: 768px) {
     gap: 1rem;
+  }
+
+  .form-select.glass-input {
+    height: 34px;
+    min-height: 34px;
+    padding: 0.25rem 1.75rem 0.25rem 0.6rem;
+    font-size: 0.825rem;
+    background-position: right 0.6rem center;
+    background-size: 14px 10px;
+    border-radius: 8px;
+
+    @media (min-width: 768px) {
+      height: 42px;
+      min-height: 42px;
+      padding: 0.5rem 2.25rem 0.5rem 0.85rem;
+      font-size: 0.95rem;
+      background-position: right 0.85rem center;
+      background-size: 16px 12px;
+      border-radius: 10px;
+    }
+  }
+}
+
+.variant-pricing-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  width: 100%;
+  align-items: flex-start;
+
+  @media (min-width: 768px) {
+    display: contents;
+  }
+
+  .input-group {
+    height: 36px;
+
+    @media (min-width: 768px) {
+      height: 42px;
+    }
+
+    .glass-addon {
+      height: 36px;
+      padding: 0 0.6rem;
+      font-size: 0.85rem;
+      border-top-left-radius: 8px;
+      border-bottom-left-radius: 8px;
+
+      @media (min-width: 768px) {
+        height: 42px;
+        padding: 0 0.85rem;
+        font-size: 0.95rem;
+        border-top-left-radius: 10px;
+        border-bottom-left-radius: 10px;
+      }
+    }
+
+    .glass-input {
+      height: 36px;
+      padding: 0 0.6rem;
+      font-size: 0.85rem;
+      border-top-right-radius: 8px;
+      border-bottom-right-radius: 8px;
+
+      @media (min-width: 768px) {
+        height: 42px;
+        padding: 0 0.85rem;
+        font-size: 0.95rem;
+        border-top-right-radius: 10px;
+        border-bottom-right-radius: 10px;
+      }
+    }
+  }
+
+  .invalid-feedback {
+    font-size: 0.7rem;
+    margin-top: 0.2rem;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
 .variant-price-item {
   grid-area: price;
+  min-width: 0;
 }
 
 .variant-stock-item {
   grid-area: stock;
+  min-width: 0;
 }
 
 .variant-action-item {
   grid-area: action;
+  flex-shrink: 0;
 
   .btn-glass-danger {
-    width: 44px !important;
-    height: 44px !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px;
     padding: 0 !important;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 8px;
+    font-size: 0.85rem;
 
     @media (min-width: 768px) {
-      width: 50px !important;
-      height: 50px !important;
+      width: 44px !important;
+      height: 44px !important;
+      min-width: 44px;
+      border-radius: 10px;
+      font-size: 1rem;
     }
   }
 }
@@ -693,7 +802,7 @@ select.glass-input {
     background: rgba(15, 23, 42, 0.95);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    padding: 1rem;
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px)) 1rem;
     margin: 1.5rem -1rem -1rem -1rem !important;
     border-radius: 0 0 16px 16px;
     z-index: 100;
