@@ -51,6 +51,7 @@
   border-radius: calc(var(--radius-lg, 12px) - 1px);
   background: rgba(15, 23, 42, 0.7);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   color: #f8fafc;
 
   .card-body {
@@ -103,10 +104,126 @@
   }
 }
 
+/* ── Mobile Touch Status Chips Carousel ─────────────────────────────────── */
+.status-chips-carousel {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  gap: 0.5rem;
+  padding-bottom: 4px;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip-btn {
+    flex-shrink: 0;
+    padding: 0.45rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    &.active {
+      background: rgba(168, 85, 247, 0.25);
+      border-color: #a855f7;
+      color: #f3e8ff;
+      box-shadow: 0 2px 10px rgba(168, 85, 247, 0.3);
+    }
+  }
+}
+
+/* ── Interactive Glass Status Select (Pill Badge) ────────────────────────── */
+.glass-status-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  display: inline-block;
+  padding: 0.35rem 1.6rem 0.35rem 0.75rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 10px 10px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+  transition: all 0.2s ease;
+  width: auto;
+  max-width: 100%;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.3);
+  }
+
+  option {
+    background-color: #0f172a;
+    color: #ffffff;
+    font-size: 0.85rem;
+    text-transform: none;
+  }
+
+  &.status--pending {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #fcd34d;
+    border-color: rgba(245, 158, 11, 0.35);
+  }
+
+  &.status--processing {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #93c5fd;
+    border-color: rgba(59, 130, 246, 0.35);
+  }
+
+  &.status--ready_for_pickup {
+    background-color: rgba(6, 182, 212, 0.18);
+    color: #67e8f9;
+    border-color: rgba(6, 182, 212, 0.35);
+  }
+
+  &.status--shipped {
+    background-color: rgba(168, 85, 247, 0.18);
+    color: #d8b4fe;
+    border-color: rgba(168, 85, 247, 0.35);
+  }
+
+  &.status--delivered {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #6ee7b7;
+    border-color: rgba(16, 185, 129, 0.35);
+  }
+
+  &.status--cancelled {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.35);
+  }
+}
+
+/* ── Desktop Orders Table ─────────────────────────────────────────────────── */
 .order-table {
   --bs-table-bg: transparent;
   --bs-table-border-color: rgba(255, 255, 255, 0.08);
   --bs-table-color: #f8fafc;
+  width: 100%;
+  table-layout: fixed;
 
   thead th {
     font-weight: 700;
@@ -115,6 +232,7 @@
     font-size: 0.75rem;
     letter-spacing: 0.08em;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
   }
 
   tbody tr {
@@ -131,9 +249,22 @@
   }
 
   td {
-    padding: 1.25rem 0.5rem;
+    padding: 1.1rem 0.5rem;
     vertical-align: middle;
     border: none;
+  }
+}
+
+.action-cell {
+  width: 8%;
+  min-width: 88px;
+  max-width: 88px;
+
+  .action-wrapper {
+    display: inline-flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
   }
 }
 
@@ -141,6 +272,51 @@
   color: rgba(255, 255, 255, 0.4) !important;
 }
 
+/* ── Native App Style Mobile Cards ───────────────────────────────────────── */
+.order-cards-container {
+  width: 100%;
+}
+
+.order-mobile-card {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg, 12px);
+  padding: 1rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  &__header {
+    .order-id {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+  }
+
+  &__body {
+    .order-client {
+      font-size: 1rem;
+      color: #fff;
+    }
+  }
+
+  &__footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  &--skeleton {
+    pointer-events: none;
+  }
+}
+
+/* ── Pagination ───────────────────────────────────────────────────────────── */
 .pagination {
   .page-item .page-link {
     border-radius: var(--radius-sm, 6px) !important;
@@ -178,6 +354,7 @@
   }
 }
 
+/* ── Badges & Buttons ─────────────────────────────────────────────────────── */
 .glass-badge {
   padding: 0.45rem 0.85rem;
   border-radius: 8px;
@@ -305,123 +482,7 @@
   }
 }
 
-@media (max-width: 767.98px) {
-  .order-table {
-    thead {
-      display: none;
-    }
-
-    tbody,
-    tr,
-    td {
-      display: block;
-      width: 100%;
-    }
-
-    tr {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      align-items: center;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 16px;
-      margin-bottom: 1rem;
-      padding: 1.25rem;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-      row-gap: 0.75rem;
-    }
-
-    td {
-      padding: 0;
-      border: none;
-      border-bottom: none;
-      display: block;
-      text-align: left;
-      width: auto;
-
-      &::before {
-        display: none;
-      }
-    }
-
-    td.order-id {
-      grid-column: 1;
-      font-family: monospace;
-      font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.4);
-
-      &::before {
-        content: 'ID: ';
-        display: inline;
-      }
-    }
-
-    td.order-status {
-      grid-column: 2;
-      display: flex;
-      justify-content: flex-end;
-    }
-
-    td.order-client {
-      grid-column: 1 / -1;
-      font-size: 1.15rem;
-      font-weight: 700;
-      color: #fff;
-      margin-top: 0.25rem;
-    }
-
-    td.order-date {
-      grid-column: 1 / -1;
-      font-size: 0.85rem;
-      color: rgba(255, 255, 255, 0.5);
-    }
-
-    td.order-delivery {
-      grid-column: 1 / -1;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding-bottom: 0.75rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      margin-bottom: 0.5rem;
-
-      &::before {
-        content: 'Entrega: ';
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.5);
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        display: inline-block;
-      }
-    }
-
-    td.order-total {
-      grid-column: 1;
-      display: flex;
-      justify-content: flex-start;
-      align-items: center;
-      font-size: 1.25rem;
-      font-weight: 800;
-      color: #fff;
-    }
-
-    td.action-cell {
-      grid-column: 2;
-      justify-content: flex-end;
-      gap: 0.75rem;
-
-      .d-flex {
-        display: flex !important;
-        justify-content: flex-end;
-        align-items: center;
-        gap: 0.75rem !important;
-      }
-    }
-  }
-}
-
-// ── Orders List Skeleton Shimmer ───────────────────────────────────────────
+/* ── Orders List Skeleton Shimmer ─────────────────────────────────────────── */
 .table-row--skeleton {
   pointer-events: none;
 }
@@ -452,15 +513,21 @@
     height: 16px;
   }
 
+  &--delivery {
+    width: 130px;
+    height: 24px;
+    border-radius: 20px;
+  }
+
   &--total {
     width: 80px;
     height: 18px;
   }
 
   &--status {
-    width: 75px;
-    height: 24px;
-    border-radius: 12px;
+    width: 90px;
+    height: 26px;
+    border-radius: 8px;
   }
 
   &--actions {
@@ -474,6 +541,7 @@
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }
