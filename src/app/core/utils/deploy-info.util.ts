@@ -48,6 +48,55 @@ export function getDeployLabel(info: BuildInfoLike): string {
   return `Despliegue ${deployNumber}`;
 }
 
+export function getEnvironmentBadgeInfo(
+  info: BuildInfoLike,
+  hostnameOverride?: string,
+): {
+  isSpecialDeploy: boolean;
+  label: string;
+  details: string;
+  type: 'preview' | 'branch' | 'standard';
+} {
+  const host =
+    (hostnameOverride ??
+      (typeof globalThis !== 'undefined' ? globalThis.location?.hostname : '')) ||
+    '';
+  const commit =
+    info.commitSha && info.commitSha !== 'unknown' ? info.commitSha.substring(0, 7) : '';
+
+  if (host.includes('--pr-')) {
+    const prPart = host.split('--pr-')[1]?.split('.')[0]?.split('-')[0] || '';
+    const prText = prPart ? `PR #${prPart}` : 'PR Preview';
+    return {
+      isSpecialDeploy: true,
+      label: `Preview ${prText}`,
+      details: commit ? `Commit ${commit}` : 'Canal Efímero',
+      type: 'preview',
+    };
+  }
+
+  // Branch o prueba sin tag (por commit o flag de redeploy/dev)
+  const isDevOrTest = host.includes('dev') || host === 'localhost' || host === '127.0.0.1';
+  if (info.isRedeploy || isDevOrTest) {
+    const deployLabel = getDeployLabel(info);
+    const detailText = commit ? `Commit ${commit}` : `v${info.version ?? '0.0.0'}`;
+    return {
+      isSpecialDeploy: true,
+      label: `Test / Rama [${deployLabel}]`,
+      details: detailText,
+      type: 'branch',
+    };
+  }
+
+  const ver = (info.version ?? '0.0.0').replace(/^v/, '');
+  return {
+    isSpecialDeploy: false,
+    label: `v${ver}`,
+    details: commit,
+    type: 'standard',
+  };
+}
+
 export function formatStorefrontBanner(info: BuildInfoLike): string {
   const version = (info.version ?? '0.0.0').replace(/^v/, '');
   const deployLabel = getDeployLabel(info);

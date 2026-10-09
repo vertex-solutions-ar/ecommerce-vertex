@@ -1,3 +1,26 @@
+@if (envBadge().isSpecialDeploy) {
+  <div
+    class="vertex-env-badge"
+    [class.vertex-env-badge--preview]="envBadge().type === 'preview'"
+    [class.vertex-env-badge--branch]="envBadge().type === 'branch'"
+    role="status"
+    aria-live="polite"
+  >
+    <div class="vertex-env-badge__container">
+      <span class="vertex-env-badge__tag">
+        <i
+          class="bi"
+          [class.bi-git]="envBadge().type === 'branch'"
+          [class.bi-eye]="envBadge().type === 'preview'"
+        ></i>
+        {{ envBadge().label }}
+      </span>
+      <span class="vertex-env-badge__details">{{ envBadge().details }}</span>
+      <span class="vertex-env-badge__note">Modo de prueba Vertex</span>
+    </div>
+  </div>
+}
+
 <app-shop-header></app-shop-header>
 
 <main class="shop-main" role="main">

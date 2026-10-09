@@ -4,6 +4,8 @@ import { RouterModule } from '@angular/router';
 import { Header } from '@features/shop/components/shared/header/header';
 import { Footer } from '@features/shop/components/shared/footer/footer';
 import { StoreConfigService } from '@core/services/store-config.service';
+import { BUILD_INFO } from '@environments/build-info';
+import { getEnvironmentBadgeInfo } from '@core/utils/deploy-info.util';
 
 @Component({
   selector: 'app-shop',
@@ -15,6 +17,8 @@ import { StoreConfigService } from '@core/services/store-config.service';
 export class Shop {
   private readonly storeConfigService = inject(StoreConfigService);
   readonly storeConfig = this.storeConfigService.storeConfig;
+
+  readonly envBadge = computed(() => getEnvironmentBadgeInfo(BUILD_INFO));
 
   readonly whatsAppUrl = computed(() => {
     const config = this.storeConfig();
