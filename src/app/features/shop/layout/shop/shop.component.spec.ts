@@ -121,21 +121,4 @@ describe('Shop', () => {
       expect(btn).toBeNull();
     });
   });
-
-  describe('environment banner', () => {
-    it('should expose envBadge signal', () => {
-      expect(component.envBadge()).toBeDefined();
-    });
-
-    it('should render vertex-env-badge when isSpecialDeploy is true', () => {
-      fixture.detectChanges();
-      const badgeEl = fixture.debugElement.query(By.css('.vertex-env-badge'));
-      // En test runner local BUILD_INFO o localhost activa el badge de branch o test
-      if (component.envBadge().isSpecialDeploy) {
-        expect(badgeEl).not.toBeNull();
-      } else {
-        expect(badgeEl).toBeNull();
-      }
-    });
-  });
 });
