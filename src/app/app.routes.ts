@@ -7,6 +7,10 @@ export const routes: Routes = [
     loadChildren: () => import('./features/shop/shop.routes').then((m) => m.SHOP_ROUTES),
   },
   {
+    path: 'shop',
+    loadChildren: () => import('./features/shop/shop.routes').then((m) => m.SHOP_ROUTES),
+  },
+  {
     path: 'admin',
     children: [
       {

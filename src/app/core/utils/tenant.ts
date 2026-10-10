@@ -53,9 +53,9 @@ export function resolveTenantId(locationOverride?: { hostname: string; search: s
     if (host && host !== 'localhost' && host !== '127.0.0.1') {
       // Handle Firebase Hosting Preview Channels (e.g. site--pr-12-hash.web.app)
       if (host.includes('--pr-')) {
-        const prPart = host.split('--pr-')[1]?.split('.')[0]?.split('-')[0];
-        if (prPart) {
-          resolvedId = `vtx-pr-${prPart}`;
+        const match = host.match(/--pr-(\d+)/);
+        if (match?.[1]) {
+          resolvedId = `vtx-pr-${match[1]}`;
         }
       }
 
