@@ -418,27 +418,38 @@ export const createPaymentPreference = onCall(
           }
 
           const productData = productDoc.data() ?? {};
+          const productVariants = (Array.isArray(productData['variants'])
+            ? productData['variants']
+            : []) as Array<Record<string, any>>;
+          const embeddedVariant = hasVariant
+            ? productVariants.find((v) => v?.id === item.variantId)
+            : undefined;
+          const matchedVariant =
+            (variantDoc && variantDoc.exists ? (variantDoc.data() as Record<string, any>) : undefined) ??
+            embeddedVariant;
 
-          if (variantDoc && variantDoc.exists) {
-            const variantData = variantDoc.data();
-            if (!variantData || variantData.stock < item.quantity) {
+          if (hasVariant && matchedVariant) {
+            const variantStock = Number(matchedVariant.stock ?? 0);
+            if (variantStock < item.quantity) {
               logger.warn(
-                `Stock insuficiente para variante ${item.variantId} de ${item.title}. Solicitado: ${item.quantity}, Disponible: ${variantData?.stock || 0}`,
+                `Stock insuficiente para variante ${item.variantId} de ${item.title}. Solicitado: ${item.quantity}, Disponible: ${variantStock}`,
               );
               throw new HttpsError(
                 'resource-exhausted',
-                `Stock insuficiente para ${item.title}. Solo quedan ${variantData?.stock || 0}.`,
+                `Stock insuficiente para ${item.title}. Solo quedan ${variantStock}.`,
               );
             }
 
             const productBasePrice =
               (productData['price'] as number | undefined) ??
-              (productData['finalPrice'] as number | undefined);
+              (productData['finalPrice'] as number | undefined) ??
+              0;
 
+            const variantPrice = matchedVariant.price as number | undefined;
             const serverPrice =
-              typeof productBasePrice === 'number'
-                ? productBasePrice
-                : ((variantData['price'] as number | undefined) ?? 0);
+              variantPrice != null && variantPrice > 0
+                ? variantPrice
+                : productBasePrice;
 
             serverItems.push({
               productId: item.productId,

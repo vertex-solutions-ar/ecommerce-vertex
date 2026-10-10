@@ -1,10 +1,11 @@
 import type { ComponentFixture } from '@angular/core/testing';
-import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { Home } from './home';
 import { HomeContentService } from '@core/services/home-content.service';
 import { ProductService } from '@core/services/product.service';
+import { CartService } from '@core/services/cart.service';
 import type { HeroBanner } from '@core/models/home-content.model';
 import type { Product } from '@core/models/product.model';
 
@@ -13,6 +14,7 @@ describe('Home', () => {
   let fixture: ComponentFixture<Home>;
   let homeContentServiceSpy: jasmine.SpyObj<HomeContentService>;
   let productServiceSpy: jasmine.SpyObj<ProductService>;
+  let cartServiceSpy: jasmine.SpyObj<CartService>;
 
   const mockBanner: HeroBanner = {
     id: 'b1',
@@ -38,6 +40,7 @@ describe('Home', () => {
       'getLatestProducts',
       'getProductsByIds',
     ]);
+    cartServiceSpy = jasmine.createSpyObj('CartService', ['addToCart']);
 
     homeContentServiceSpy.getHeroBanner.and.returnValue(of(mockBanner));
     productServiceSpy.getLatestProducts.and.returnValue(of(mockProducts));
@@ -49,6 +52,7 @@ describe('Home', () => {
         provideRouter([]),
         { provide: HomeContentService, useValue: homeContentServiceSpy },
         { provide: ProductService, useValue: productServiceSpy },
+        { provide: CartService, useValue: cartServiceSpy },
       ],
     }).compileComponents();
   });
@@ -204,5 +208,107 @@ describe('Home', () => {
       const mouseEvent = { currentTarget: null } as unknown as MouseEvent;
       expect(() => component.onButtonMouseMove(mouseEvent)).not.toThrow();
     });
+  });
+
+  describe('Quick-Add to Cart & Card Cleaning', () => {
+    it('should not render "Envío gratis" text or badge in product cards', () => {
+      createComponent();
+      fixture.detectChanges();
+
+      const shippingElements = fixture.nativeElement.querySelectorAll('.product-card__shipping');
+      expect(shippingElements.length).toBe(0);
+      expect(fixture.nativeElement.textContent).not.toContain('Envío gratis');
+    });
+
+    it('should call cartService.addToCart, stopPropagation and preventDefault when onAddToCart is called for a simple product', fakeAsync(() => {
+      createComponent();
+      fixture.detectChanges();
+
+      const eventMock = jasmine.createSpyObj<Event>('Event', ['stopPropagation', 'preventDefault']);
+      const targetProduct = mockProducts[0];
+
+      component.onAddToCart(eventMock, targetProduct);
+
+      expect(eventMock.stopPropagation).toHaveBeenCalled();
+      expect(eventMock.preventDefault).toHaveBeenCalled();
+      expect(cartServiceSpy.addToCart).toHaveBeenCalledWith(targetProduct, 1);
+      expect(component.isAdded('p1')).toBeTrue();
+
+      tick(1500);
+      expect(component.isAdded('p1')).toBeFalse();
+    }));
+
+    it('should navigate to product detail without adding to cart if product has multiple variants', () => {
+      createComponent();
+      fixture.detectChanges();
+
+      const router = TestBed.inject(Router);
+      const navigateSpy = spyOn(router, 'navigate');
+
+      const eventMock = jasmine.createSpyObj<Event>('Event', ['stopPropagation', 'preventDefault']);
+      const productWithVariants: Product = {
+        ...mockProducts[0],
+        variants: [
+          {
+            id: 'v1',
+            productId: 'p1',
+            stock: 5,
+            attributes: { color: 'Rojo' },
+          },
+          {
+            id: 'v2',
+            productId: 'p1',
+            stock: 3,
+            attributes: { color: 'Azul' },
+          },
+        ],
+      };
+
+      component.onAddToCart(eventMock, productWithVariants);
+
+      expect(eventMock.stopPropagation).toHaveBeenCalled();
+      expect(eventMock.preventDefault).toHaveBeenCalled();
+      expect(navigateSpy).toHaveBeenCalledWith(['/product', 'p1']);
+      expect(cartServiceSpy.addToCart).not.toHaveBeenCalled();
+      expect(component.isAdded('p1')).toBeFalse();
+    });
+
+    it('should trigger onAddToCart and show transient checkmark confirmation when clicking quick-add button in template', fakeAsync(() => {
+      createComponent();
+      fixture.detectChanges();
+
+      const quickAddButtons: NodeListOf<HTMLButtonElement> =
+        fixture.nativeElement.querySelectorAll('.btn-quick-add');
+      expect(quickAddButtons.length).toBe(mockProducts.length);
+
+      const firstButton = quickAddButtons[0];
+      firstButton.click();
+      fixture.detectChanges();
+
+      expect(cartServiceSpy.addToCart).toHaveBeenCalledWith(mockProducts[0], 1);
+      expect(component.isAdded('p1')).toBeTrue();
+      expect(firstButton.classList.contains('btn-quick-add--added')).toBeTrue();
+      expect(firstButton.querySelector('.bi-check-lg')).toBeTruthy();
+
+      tick(1500);
+      fixture.detectChanges();
+
+      expect(component.isAdded('p1')).toBeFalse();
+      expect(firstButton.classList.contains('btn-quick-add--added')).toBeFalse();
+      expect(firstButton.querySelector('.bi-cart-plus')).toBeTruthy();
+    }));
+
+    it('should clear active timers when component is destroyed', fakeAsync(() => {
+      createComponent();
+      fixture.detectChanges();
+
+      const eventMock = jasmine.createSpyObj<Event>('Event', ['stopPropagation', 'preventDefault']);
+      component.onAddToCart(eventMock, mockProducts[0]);
+      expect(component.isAdded('p1')).toBeTrue();
+
+      fixture.destroy();
+      // Fast-forward time past 1500ms: no errors or unhandled timers
+      tick(1500);
+    }));
   });
 });

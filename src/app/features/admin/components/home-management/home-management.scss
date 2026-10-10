@@ -61,6 +61,14 @@
     --glow-rgb: 129, 140, 248;
   }
 
+  &.card-categories {
+    --glow-rgb: 45, 212, 191;
+  }
+
+  &.card-featured-products {
+    --glow-rgb: 245, 158, 11;
+  }
+
   &:hover {
     background: rgba(255, 255, 255, 0.09);
     border-color: rgba(var(--glow-rgb), 0.5);

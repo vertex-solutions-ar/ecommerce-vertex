@@ -79,4 +79,23 @@ export class Footer {
       copyrightText: getCoalesced(footer?.copyrightText, config?.copyrightText, defaultCopyright),
     };
   });
+
+  readonly cleanCopyrightText = computed(() => {
+    const rawText = this.viewData().copyrightText;
+    const cleaned = rawText
+      .replace(
+        /^(?:(?:©|&copy;|\(c\)|@|copyright)\s*|\d{4}(?:\s*[-–—]\s*\d{4})?\s*[-–—]?\s*)+/i,
+        '',
+      )
+      .trim();
+
+    if (cleaned) {
+      return cleaned;
+    }
+
+    const storeNameVal = (this.storeConfig.storeConfig()?.storeName ?? '').trim();
+    return storeNameVal
+      ? `${storeNameVal}. Todos los derechos reservados.`
+      : 'Todos los derechos reservados.';
+  });
 }

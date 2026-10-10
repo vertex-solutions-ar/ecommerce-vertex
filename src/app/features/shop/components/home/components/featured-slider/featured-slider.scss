@@ -35,17 +35,33 @@
 .marquee {
   position: relative;
   width: 100%;
-  overflow: hidden;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
   user-select: none;
-  padding: 8px 0 16px;
+  gap: var(--marquee-gap);
+  padding: 8px 16px 16px;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 16px;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  scrollbar-width: none;
 
-  // Dimensiones responsive: 2 items por viewport en mobile, 5 en desktop
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  // Dimensiones responsive: peek effect (~2.15 items) en mobile, 3 en tablet, 5 en desktop
   --marquee-gap: 12px;
-  --items-visible: 2;
+  --items-visible: 2.15;
 
   @media (min-width: 768px) {
     --items-visible: 3;
     --marquee-gap: 16px;
+    overflow: hidden;
+    scroll-snap-type: none;
+    scroll-padding: 0;
+    padding: 8px 0 16px;
   }
 
   @media (min-width: 1024px) {
@@ -53,17 +69,13 @@
     --marquee-gap: 20px;
   }
 
-  // Pausa en hover y cuando cualquier elemento interactivo recibe foco
-  &:hover .marquee__group,
-  &:focus-within .marquee__group {
-    animation-play-state: paused;
+  // Pausa en hover y foco estrictamente aislada a puntero fino (Desktop)
+  @media (hover: hover) and (pointer: fine) {
+    &:hover .marquee__group,
+    &:focus-within .marquee__group {
+      animation-play-state: paused;
+    }
   }
-}
-
-.marquee__track {
-  display: flex;
-  width: max-content;
-  gap: var(--marquee-gap);
 }
 
 .marquee__group {
@@ -71,11 +83,27 @@
   align-items: stretch;
   gap: var(--marquee-gap);
   flex-shrink: 0;
-  min-width: 100%;
-  will-change: transform;
-  // Animación infinita fluida acelerada por GPU hacia la izquierda
-  animation: marqueeScroll var(--marquee-duration, 30s) linear infinite;
-  transform: translate3d(0, 0, 0);
+  min-width: 0;
+  width: max-content;
+  animation: none;
+  transform: none;
+
+  // En móvil ocultamos la pista duplicada decorativa para optimizar el DOM y el scroll táctil
+  &[aria-hidden='true'] {
+    display: none;
+  }
+
+  @media (min-width: 768px) {
+    min-width: 100%;
+    width: auto;
+    will-change: transform;
+    animation: marqueeScroll var(--marquee-duration, 85s) linear infinite;
+    transform: translate3d(0, 0, 0);
+
+    &[aria-hidden='true'] {
+      display: flex;
+    }
+  }
 }
 
 @keyframes marqueeScroll {
@@ -93,12 +121,14 @@
   }
 }
 
-// Tarjeta del producto dimensionada para satisfacer 2 en mobile y 5 en desktop
+// Tarjeta del producto dimensionada para satisfacer peek effect (2.15) en mobile y 5 en desktop
 .marquee__item {
-  flex: 0 0 calc((100vw - (var(--items-visible) + 1) * var(--marquee-gap)) / var(--items-visible));
-  width: calc((100vw - (var(--items-visible) + 1) * var(--marquee-gap)) / var(--items-visible));
+  flex: 0 0 calc((100vw - 32px - (var(--marquee-gap) * 2)) / var(--items-visible));
+  width: calc((100vw - 32px - (var(--marquee-gap) * 2)) / var(--items-visible));
   max-width: 320px;
-  min-width: 150px;
+  min-width: 130px;
+  scroll-snap-align: start;
+  scroll-snap-stop: normal;
   text-decoration: none;
   display: flex;
   flex-direction: column;
@@ -109,6 +139,13 @@
   transition:
     transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  @media (min-width: 768px) {
+    flex: 0 0 calc((100vw - (var(--items-visible) + 1) * var(--marquee-gap)) / var(--items-visible));
+    width: calc((100vw - (var(--items-visible) + 1) * var(--marquee-gap)) / var(--items-visible));
+    min-width: 150px;
+    scroll-snap-align: none;
+  }
 
   &:hover,
   &:focus-visible {
@@ -149,6 +186,9 @@
   max-height: 100%;
   object-fit: contain;
   transition: transform 0.3s ease;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
 
   .marquee__item:hover & {
     transform: scale(1.05);
@@ -169,22 +209,95 @@
   margin: 0 0 6px 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   line-height: 1.3;
   font-weight: 500;
 }
 
+.product-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
 .product-card__price {
   font-size: 1.15rem;
   font-weight: 700;
   color: #111;
-  margin: auto 0 4px 0;
+  margin: 0;
 }
 
-.product-card__shipping {
-  font-size: 0.75rem;
-  color: #16a34a;
-  margin: 0;
-  font-weight: 600;
+.btn-quick-add {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  background: #eff6ff;
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);
+  transition:
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+  z-index: 2;
+  touch-action: manipulation;
+
+  &:hover {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
+    transform: scale(1.08) translateY(-1px);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+
+  &--added {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+    animation: quickAddSuccess 0.3s ease-out;
+
+    &:hover {
+      background: #059669;
+      border-color: #059669;
+      color: #ffffff;
+    }
+  }
+}
+
+@keyframes quickAddSuccess {
+  0% {
+    transform: scale(0.8);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
