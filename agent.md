@@ -86,6 +86,33 @@ Versión actual: `0.8.0`
 2. CI `release.yml` crea GitHub Release y notifica a `vertex-platform`
 3. `vertex-platform` abre PR automático para actualizar `CURRENT_TEMPLATE_VERSION`
 
+### Probar sin crear un tag (fuente de despliegue)
+
+Desde el panel de la plataforma (`/stores/:id` > Orquestación) se puede compilar el storefront
+desde **una rama** o **un commit**, sin crear tag ni bumpear semver, para probar antes de
+publicar. La metadata de esos builds es explícita y verificable:
+
+| Campo        | Origen                                             | Dónde se ve                                                                              |
+| ------------ | -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `sourceKind` | `DEPLOY_SOURCE_KIND` (`release`/`branch`/`commit`) | `assets/version.json`, `<meta name="app-source-kind">`, `window.__VERTEX_STORE_SOURCE__` |
+| `sourceRef`  | `DEPLOY_SOURCE_REF` (rama, tag o SHA)              | `assets/version.json`, `<meta name="app-source-ref">`                                    |
+| `commitSha`  | `git rev-parse HEAD` tras el checkout              | `assets/version.json`                                                                    |
+
+- `scripts/generate-build-info.js` lee esas variables y las estampa en `BUILD_INFO` +
+  `version.json`. Sin ellas (build local, `deploy-all-stores`) el default es `release`.
+- El job `provision-store` de `deploy.yml` exporta esas variables y reporta la procedencia real
+  a la plataforma. **No usar `github.sha`** para eso: en un `repository_dispatch` apunta a la
+  punta de la rama por defecto, no al ref compilado.
+- Verificación del build desplegado:
+
+```bash
+curl -s https://vtx-<tienda>.web.app/assets/version.json | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); print(d['version'], d['sourceKind'], d['sourceRef'], d['commitSha'])"
+```
+
+- Sólo las tiendas de entorno `development` (o con `allowTestDeployments: true`) aceptan ramas o
+  commits; una tienda de producción únicamente compila releases etiquetadas.
+
 ---
 
 ## 📖 Regla de Oro: Mantenimiento Obligatorio de Documentación
@@ -101,17 +128,20 @@ Versión actual: `0.8.0`
 ## 💳 Flujo de Pagos, Carrito y Gestión de Stock (Mercado Pago)
 
 ### 1. Preservación del Carrito
+
 - El carrito en `localStorage` **NO se vacía** al redirigir al checkout de Mercado Pago.
 - Se vacía **únicamente** cuando el cliente navega a la pantalla de confirmación exitosa (`/shop/order-confirmation/:id`).
 - Si el usuario cancela o regresa desde Mercado Pago sin pagar, el storefront lo redirige a `/shop/cart`, detecta el retorno sin pago, muestra una notificación informativa y **mantiene los productos en el carrito** para que no pierda su selección.
 
 ### 2. Ciclo de Vida del Stock (Productos Simples y con Variantes)
+
 - **Reserva Inicial**: Al invocar `createPaymentPreference`, la Cloud Function decrementa de forma atómica el stock de la variante (`variantRef.stock`) si existe subcolección, y descuenta el `totalStock` del producto (`productRef.totalStock`), registrando `stockDecremented: true` en la orden (`status: 'processing'`). Si el producto no tiene variantes o es simple, valida directamente contra `totalStock`.
 - **Pago Aprobado**: El webhook `mercadoPagoWebhookHandler` recibe `status: 'approved'`, confirma el pago y la orden pasa a procesarse definitivamente.
 - **Pago Cancelado o Rechazado**: El webhook ejecuta `revertStockOnFailure(orderId)`, revirtiendo mediante transacción el stock exacto a cada variante y/o producto simple (`totalStock`) y marcando la orden como `cancelled`.
 - **Abandono / Expiración de Pago**: La Cloud Function programada `cleanupExpiredOrders` corre cada 60 minutos, busca órdenes `processing` expiradas (`mercadopago_expiration_date <= now`) sin pago confirmado y devuelve el stock al inventario automáticamente tanto para variantes como para productos simples.
 
 ### 3. Logs de Consola de Terceros en Checkout (Mercado Pago)
+
 - Al interactuar con el iframe o la redirección de Mercado Pago, la consola del navegador puede registrar eventos de `TrackBuilder`, `Armor` (sistema antifraude de Mercado Libre), o avisos internos de CSP (`script-src 'nonce...'`) emitidos por el dominio `mercadopago.com.ar` / `mercadolibre.com`.
 - Estos logs provienen de los scripts de la pasarela y cumplen con el estándar **PCI-DSS**. No exponen credenciales ni interfieren con el correcto funcionamiento de Vertex.
 
@@ -145,18 +175,18 @@ Versión actual: `0.8.0`
 - **Errores**: degradar con `SweetAlertService`, nunca silenciar ni crashear el layout
 - **Confirmación destructiva**: toda acción de eliminación debe usar el modal de confirmación existente
 - **Patrón de Estados de Carga & Empty States en Admin**:
-  * Prohibido emitir arrays vacíos prematuramente (`startWith([])` o `BehaviorSubject([])`) que causan parpadeos (flashing) de 100ms.
-  * Usar `isLoading = signal(true)` manejado mediante operadores `tap` / `finalize` / `catchError` en el stream observable.
-  * Los templates del panel de administración deben usar control flow mutuamente excluyente:
+  - Prohibido emitir arrays vacíos prematuramente (`startWith([])` o `BehaviorSubject([])`) que causan parpadeos (flashing) de 100ms.
+  - Usar `isLoading = signal(true)` manejado mediante operadores `tap` / `finalize` / `catchError` en el stream observable.
+  - Los templates del panel de administración deben usar control flow mutuamente excluyente:
     `@if (isLoading()) { <skeleton> } @else if (items$ | async; as items) { @if (items.length === 0) { <empty-state> } @else { <table/grid> <pagination> } }`
-  * Prohibido superponer loading spinners y skeletons simultáneamente.
+  - Prohibido superponer loading spinners y skeletons simultáneamente.
 - **Clean Naming Architecture**:
-  * Nombres de archivos directos sin sufijo `.component` (`home.ts`, `catalog.ts`, `cart.ts`, etc.).
-  * Clases de componentes limpias (`Home`, `Catalog`, `Cart`, `Checkout`, `StoreConfig`, etc.).
-  * Modelos de datos aliasados limpiamente en caso de colisión (`ProductModel`, `StoreConfigData`, `CartModel`).
+  - Nombres de archivos directos sin sufijo `.component` (`home.ts`, `catalog.ts`, `cart.ts`, etc.).
+  - Clases de componentes limpias (`Home`, `Catalog`, `Cart`, `Checkout`, `StoreConfig`, etc.).
+  - Modelos de datos aliasados limpiamente en caso de colisión (`ProductModel`, `StoreConfigData`, `CartModel`).
 - **Zero Vulnerabilities & Safe Overrides**:
-  * Todo el árbol de dependencias debe mantener `npm audit: 0 vulnerabilities`.
-  * Toda vulnerabilidad transitiva se mitiga mediante la sección `overrides` en `package.json`.
+  - Todo el árbol de dependencias debe mantener `npm audit: 0 vulnerabilities`.
+  - Toda vulnerabilidad transitiva se mitiga mediante la sección `overrides` en `package.json`.
 
 ---
 
@@ -174,21 +204,25 @@ Versión actual: `0.8.0`
 ## 📧 Notificaciones por Email y Comprobantes de Compra (Receipt Voucher)
 
 ### 1. Despacho Multi-Tenant de Emails (`notifyOrderConfirmation`)
+
 - **Trigger HTTPS Público**: La Cloud Function `notifyOrderConfirmation` opera como endpoint HTTPS (`onRequest({ cors: true, invoker: 'public' })`) para evitar errores `401 Unauthorized` derivados del chequeo automático de audience de Firebase Auth (`aud: <shard-id>` vs `<platform-id>`) al invocar funciones centrales desde shards dedicados.
 - **Despacho Automático Redundante**: `OrderConfirmation` (`/shop/order-confirmation/:id`) invoca `notifyOrderConfirmation` al cargar el pedido aprobado para asegurar el envío inmediato aun si el webhook de Mercado Pago experimenta retrasos en entornos locales o de prueba.
 - **Resolución Automática de Shards**: Si la petición proviene de un shard o storefront, la función resuelve la base de datos de Firestore correspondiente mediante `resolveTenantDb(tenantProjectId)` o buscando el tenant en la colección global `stores`.
 - **Doble Notificación**: Despacha emails transaccionales tanto al comprador (`clientEmail`) como al administrador/dueño de la tienda configurado en Firestore o en la colección `admin_roles`.
 
 ### 2. Generación e Impresión de Comprobante / Recibo
+
 - El componente `OrderConfirmation` (`/shop/order-confirmation/:id`) incluye un toolbar de acciones con botón de **Imprimir / Descargar Comprobante** (`printReceipt()`), invocando `window.print()`.
 - Incorpora un voucher imprimible semántico (`#printable-receipt`) con reglas `@media print` dedicadas que ocultan headers, navegaciones y fondos web, formateando una factura/recibo limpia y lista para ser guardada como PDF o impresa físicamente sin cortes superiores (`@page { margin: 12mm; }`).
 
 ### 3. Soporte de Productos Simples y Sincronización de Precios
+
 - Soporte para productos sin atributos (ej. libros, bazar, servicios) mediante resolución automática de variante base (`attributes: {}`, `stock: totalStock`).
 - Al editar el precio base de un producto en el panel de administración, la actualización se propaga de forma atómica a todas sus variantes para mantener la consistencia de precios en la subcolección de variantes de Firestore y en `createPaymentPreference`.
 - El storefront habilita directamente la compra y el carrito muestra el nombre limpio del producto.
 
 ### 4. Slider de Productos Destacados (Featured Continuous Marquee)
+
 - **Storefront**: Componente `FeaturedSlider` (`app-featured-slider`) en `src/app/features/shop/components/home/components/featured-slider/`.
   - Marquee infinito continuo acelerado por GPU (`transform: translate3d(...)`) con pausa en `:hover` y `:focus-within`.
   - Dimensiones responsive: 2 ítems por viewport en mobile y 5 ítems en desktop.
@@ -201,14 +235,14 @@ Versión actual: `0.8.0`
 
 ## ⚠️ Errores comunes y soluciones
 
-| Error                                                  | Causa                                          | Solución                                      |
-| ------------------------------------------------------ | ---------------------------------------------- | --------------------------------------------- |
-| `auth/operation-not-allowed`                           | Google OAuth no habilitado en Firebase Console | Habilitar en Authentication > Sign-in methods |
-| `auth/popup-closed-by-user`                            | COOP header omitido o desconfigurado           | Garantizar `Cross-Origin-Opener-Policy: same-origin-allow-popups` en `firebase.json` |
-| `7 PERMISSION_DENIED` en `createPaymentPreference`     | SA de Cloud Run 2da Gen sin rol datastore.user | `ensureShardProjectIam` asigna automáticamente `roles/datastore.user` a la SA del Compute Engine en el shard |
-| `notifyOrderConfirmation 401 (Unauthorized)`           | Funciones `onCall` verificando token contra el proyecto central en vez del shard | Usar `onRequest({ cors: true, invoker: 'public' })` y despachar petición HTTP desacoplada de Auth header |
-| `permission-denied` en Firestore                       | Email no en `admin_roles`                      | Agregar vía Cloud Function o plataforma       |
-| `Cannot read properties of undefined (hasOwnProperty)` | Problema de DI en Angular con lazy loading     | Revisar barrel imports y providers            |
+| Error                                                  | Causa                                                                            | Solución                                                                                                     |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `auth/operation-not-allowed`                           | Google OAuth no habilitado en Firebase Console                                   | Habilitar en Authentication > Sign-in methods                                                                |
+| `auth/popup-closed-by-user`                            | COOP header omitido o desconfigurado                                             | Garantizar `Cross-Origin-Opener-Policy: same-origin-allow-popups` en `firebase.json`                         |
+| `7 PERMISSION_DENIED` en `createPaymentPreference`     | SA de Cloud Run 2da Gen sin rol datastore.user                                   | `ensureShardProjectIam` asigna automáticamente `roles/datastore.user` a la SA del Compute Engine en el shard |
+| `notifyOrderConfirmation 401 (Unauthorized)`           | Funciones `onCall` verificando token contra el proyecto central en vez del shard | Usar `onRequest({ cors: true, invoker: 'public' })` y despachar petición HTTP desacoplada de Auth header     |
+| `permission-denied` en Firestore                       | Email no en `admin_roles`                                                        | Agregar vía Cloud Function o plataforma                                                                      |
+| `Cannot read properties of undefined (hasOwnProperty)` | Problema de DI en Angular con lazy loading                                       | Revisar barrel imports y providers                                                                           |
 
 ## Vertex Storefront — Notas de Agente (v0.6.x)
 
