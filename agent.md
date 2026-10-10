@@ -119,7 +119,8 @@ Versión actual: `0.8.0`
 
 ## 🚀 Ciclo de Vida de Canales de Preview Efímeros (PR Previews)
 
-- **Despliegue y Sembrado Automático**: Cada PR hacia `develop` compila contra el shard de desarrollo (`build:dev-template`), despliega un canal efímero en Firebase Hosting y ejecuta `scripts/seed-pr-tenant.ts` generando productos con catálogo, imágenes, combinaciones completas de variantes (talles/colores) y stock real.
+- **Despliegue y Sembrado Automático**: Cada PR hacia `develop` compila contra el shard de desarrollo (`build:dev-template`), despliega un canal efímero en Firebase Hosting y ejecuta `scripts/seed-pr-tenant.ts` generando productos con catálogo, imágenes, combinaciones completas de variantes (talles/colores) y stock real. El bot de preview genera y comenta la URL directa apuntando a `/shop` (`https://ecommerce-vertex-dev--pr-XXX.web.app/shop`) garantizando acceso inmediato al storefront sembrado.
+- **Unificación de Pipeline**: El despliegue de preview se canaliza a través de `pr-preview.yml`, mientras que `ci.yml` valida la integridad de artefactos de compilación sin disparar deploys concurrentes duplicados ni condiciones de carrera en el canal.
 - **Retorno Dinámico**: Las URLs de retorno (`back_urls`) de Mercado Pago se calculan dinámicamente usando el origen de la preview activa (`https://ecommerce-vertex-dev--pr-XXX.web.app`).
 - **Destrucción y Notificación Automática**: Al cerrar o mergear el PR, `preview-cleanup.yml`:
   1. Elimina el canal en Firebase Hosting (devuelve 404).

@@ -114,6 +114,68 @@ describe('Product Component (Storefront)', () => {
       component.selectAttribute('attr-talle', 'M');
 
       expect(component.selectedVariant()?.id).toBe('var-1');
+      expect(component.matchedVariant()?.id).toBe('var-1');
+    });
+
+    it('should compute currentPrice from variant price when defined', () => {
+      const variantWithPrice: ProductVariant = {
+        ...mockVariants[0],
+        price: 32000,
+      };
+      component.variants.set([variantWithPrice, mockVariants[1]]);
+
+      expect(component.currentPrice()).toBe(25000);
+
+      component.selectAttribute('attr-color', 'Rojo');
+      component.selectAttribute('attr-talle', 'M');
+
+      expect(component.currentPrice()).toBe(32000);
+    });
+
+    it('should inherit base price in currentPrice when variant has price null or undefined', () => {
+      const variantNullPrice: ProductVariant = {
+        ...mockVariants[0],
+        price: null as unknown as number,
+      };
+      component.variants.set([variantNullPrice, mockVariants[1]]);
+
+      component.selectAttribute('attr-color', 'Rojo');
+      component.selectAttribute('attr-talle', 'M');
+      expect(component.currentPrice()).toBe(25000);
+
+      const variantUndefPrice: ProductVariant = {
+        ...mockVariants[0],
+        price: undefined,
+      };
+      component.variants.set([variantUndefPrice, mockVariants[1]]);
+      expect(component.currentPrice()).toBe(25000);
+    });
+
+    it('should inherit base price in currentPrice when variant has price 0 or negative', () => {
+      const variantZeroPrice: ProductVariant = {
+        ...mockVariants[0],
+        price: 0,
+      };
+      component.variants.set([variantZeroPrice, mockVariants[1]]);
+
+      component.selectAttribute('attr-color', 'Rojo');
+      component.selectAttribute('attr-talle', 'M');
+      expect(component.currentPrice()).toBe(25000);
+
+      const variantNegPrice: ProductVariant = {
+        ...mockVariants[0],
+        price: -500,
+      };
+      component.variants.set([variantNegPrice, mockVariants[1]]);
+      expect(component.currentPrice()).toBe(25000);
+    });
+
+    it('should return base price when no variant is selected and 0 when product is undefined', () => {
+      expect(component.selectedVariant()).toBeFalsy();
+      expect(component.currentPrice()).toBe(25000);
+
+      component.product.set(undefined);
+      expect(component.currentPrice()).toBe(0);
     });
 
     it('should call cartService.addItem when variant is selected and addToCart is clicked', () => {

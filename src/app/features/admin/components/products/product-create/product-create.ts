@@ -1,24 +1,11 @@
+// prettier-ignore
 import {
-  Component,
-  inject,
-  ViewChild,
-  ViewChildren,
-  DestroyRef,
-  ChangeDetectorRef,
-  signal,
-  type OnInit,
-  type QueryList,
-  type ElementRef,
-  type AfterViewInit,
+  Component, inject, ViewChild, ViewChildren, DestroyRef, ChangeDetectorRef, signal, type OnInit, type QueryList, type ElementRef, type AfterViewInit,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+// prettier-ignore
 import {
-  FormBuilder,
-  ReactiveFormsModule,
-  FormsModule,
-  type FormGroup,
-  type FormArray,
-  type AbstractControl,
+  FormBuilder, ReactiveFormsModule, FormsModule, type FormGroup, type FormArray, type AbstractControl,
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -60,15 +47,12 @@ export class ProductCreate implements OnInit, AfterViewInit {
   @ViewChildren('galleryInput') galleryInputs!: QueryList<ElementRef<HTMLInputElement>>;
   @ViewChildren('variantSelect') variantSelects!: QueryList<ElementRef<HTMLSelectElement>>;
   @ViewChildren('variantStock') variantStocks!: QueryList<ElementRef<HTMLInputElement>>;
-
   productForm!: FormGroup;
   categories$!: Observable<Category[]>;
-
   showAttributeForm = false;
   newAttributeName = '';
   private attributesSubject = new BehaviorSubject<Attribute[]>([]);
   attributes$ = this.attributesSubject.asObservable();
-
   isSubmitting = false;
   isEditMode = false;
   productId: string | null = null;
@@ -77,7 +61,6 @@ export class ProductCreate implements OnInit, AfterViewInit {
   uploadProgress: number | null = null;
   galleryUploadProgress: Record<number, number | null> = {};
   private initialVariants: ProductVariant[] = [];
-
   currentPage = 1;
   pageSize = 5;
   readonly variantSearchControl = this.variantFormService.variantSearchControl;
@@ -437,18 +420,15 @@ export class ProductCreate implements OnInit, AfterViewInit {
     const totalStock = hasAttributes
       ? (formValue.variants || []).reduce((sum, v) => sum + (Number(v.stock) || 0), 0)
       : stockVal;
-
     try {
       if (this.isEditMode && this.productId) {
         let toUpdate: (Partial<ProductVariant> & { id: string })[] = [];
         let toAdd: WithFieldValue<Omit<ProductVariant, 'id' | 'productId'>>[] = [];
         let toDelete: string[] = [];
-
         if (hasAttributes) {
           const editChanges = this.variantFormService.buildEditChanges(
             formValue.variants,
             this.initialVariants,
-            formValue.price,
           );
           toUpdate = editChanges.toUpdate;
           toAdd = editChanges.toAdd;
@@ -456,7 +436,6 @@ export class ProductCreate implements OnInit, AfterViewInit {
         } else {
           toDelete = this.initialVariants.map((iv) => iv.id);
         }
-
         const { name, description, price, categoryId, image, images } = formValue;
         const variantAttributes = hasAttributes ? (formValue.variantAttributes ?? []) : [];
 
@@ -483,11 +462,17 @@ export class ProductCreate implements OnInit, AfterViewInit {
       } else {
         const productData = this.variantFormService.buildProductData(formValue);
         const variantsData =
-          hasAttributes && formValue.variants && formValue.variants.length > 0
-            ? formValue.variants.map((v) => ({
-                attributes: v.attributes ?? {},
-                stock: Number(v.stock) || 0,
-              }))
+          hasAttributes && formValue.variants?.length
+            ? formValue.variants.map((v) => {
+                const price = Number(v.price);
+                // prettier-ignore
+                const hasPrice = v.price !== null && v.price !== undefined && v.price !== ('' as unknown) && !isNaN(price) && price > 0;
+                return {
+                  attributes: v.attributes ?? {},
+                  stock: Number(v.stock) || 0,
+                  ...(hasPrice ? { price } : {}),
+                };
+              })
             : [];
         const newId = await this.productService.createProductWithVariants(
           productData,
