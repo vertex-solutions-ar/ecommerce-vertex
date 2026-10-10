@@ -65,7 +65,8 @@ export function getEnvironmentBadgeInfo(
     info.commitSha && info.commitSha !== 'unknown' ? info.commitSha.substring(0, 7) : '';
 
   if (host.includes('--pr-')) {
-    const prPart = host.split('--pr-')[1]?.split('.')[0]?.split('-')[0] || '';
+    const match = host.match(/--pr-(\d+)/);
+    const prPart = match ? match[1] : '';
     const prText = prPart ? `PR #${prPart}` : 'PR Preview';
     return {
       isSpecialDeploy: true,
