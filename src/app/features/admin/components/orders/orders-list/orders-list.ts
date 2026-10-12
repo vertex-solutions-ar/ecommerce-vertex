@@ -198,14 +198,25 @@ export class OrdersList implements OnInit {
     if (order.status === newStatus) {
       return;
     }
-    this._orderService
-      .updateOrder(order.id, { status: newStatus })
-      .then(() => {
-        this.loadOrders();
-      })
-      .catch((error: unknown) => {
-        console.error('Error al actualizar el estado del pedido:', error);
-      });
+
+    const previousStatus = order.status;
+    const currentOrders = this.rawOrders$.value;
+    const updatedOrders = currentOrders.map((o) =>
+      o.id === order.id ? { ...o, status: newStatus } : o,
+    );
+    this.rawOrders$.next(updatedOrders);
+
+    this._orderService.updateOrder(order.id, { status: newStatus }).catch((error: unknown) => {
+      console.error('Error al actualizar el estado del pedido:', error);
+      const revertedOrders = this.rawOrders$.value.map((o) =>
+        o.id === order.id ? { ...o, status: previousStatus } : o,
+      );
+      this.rawOrders$.next(revertedOrders);
+      this._sweetAlertService?.error?.(
+        'Error',
+        'No se pudo actualizar el estado del pedido. Intenta nuevamente.',
+      );
+    });
   }
 
   editOrder(order: Order): void {

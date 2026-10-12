@@ -68,9 +68,36 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT_DEV: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
         run: |
+          # Write clean preview firebase.json ensuring SPA routing to index.html
+          python3 - << 'PYEOF'
+          import json
+          config = {
+            "hosting": {
+              "public": "dist/ecommerce-vertex/browser",
+              "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+              "rewrites": [{"source": "**", "destination": "/index.html"}],
+              "headers": [
+                {
+                  "source": "**/*.@(js|css|woff2|woff|ttf|eot|svg|ico|png|jpg|webp|avif)",
+                  "headers": [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]
+                },
+                {
+                  "source": "**",
+                  "headers": [
+                    {"key": "Cache-Control", "value": "no-cache, no-store, must-revalidate"},
+                    {"key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups"}
+                  ]
+                }
+              ]
+            }
+          }
+          with open("firebase.preview.json", "w") as f:
+              json.dump(config, f, indent=2)
+          PYEOF
+
           echo "$FIREBASE_SERVICE_ACCOUNT_DEV" > sa_key.json
-          GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/sa_key.json" npx firebase-tools hosting:channel:deploy pr-${{ github.event.number }} --project ecommerce-vertex-dev --expires 7d --json > deploy_output.json
-          rm -f sa_key.json
+          GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/sa_key.json" npx firebase-tools hosting:channel:deploy pr-${{ github.event.number }} --config firebase.preview.json --project ecommerce-vertex-dev --expires 7d --json > deploy_output.json
+          rm -f sa_key.json firebase.preview.json
 
           cat deploy_output.json
           PREVIEW_URL=$(node -p "const data = JSON.parse(require('fs').readFileSync('deploy_output.json', 'utf8')); (data.result && (data.result['ecommerce-vertex'] || data.result['ecommerce-vertex-dev'])) ? (data.result['ecommerce-vertex'] || data.result['ecommerce-vertex-dev']).url : (data.result ? Object.values(data.result)[0]?.url : '')")
@@ -84,7 +111,8 @@ jobs:
         with:
           script: |
             const prNumber = context.issue.number;
-            const previewUrl = '${{ steps.deploy-channel.outputs.url }}';
+            const baseUrl = '${{ steps.deploy-channel.outputs.url }}'.replace(/\/+$/, '');
+            const previewUrl = `${baseUrl}/shop`;
             const expireTime = '${{ steps.deploy-channel.outputs.expire_time }}';
             const commitSha = '${{ github.event.pull_request.head.sha }}'.substring(0, 7);
 
@@ -95,7 +123,8 @@ jobs:
               `| **Canal** | \`pr-${prNumber}\` |\n` +
               `| **Commit** | \`${commitSha}\` |\n` +
               `| **Expiración** | ${expireTime || '7 días'} |\n` +
-              `| **Tenant ID** | \`vtx-pr-${prNumber}\` (datos pre-sembrados) |\n\n` +
+              `| **Tenant ID** | \`vtx-pr-${prNumber}\` (datos pre-sembrados) |\n` +
+              `| **URL Directa** | [${previewUrl}](${previewUrl}) |\n\n` +
               `> Los datos de prueba en Firestore y el canal de hosting se destruyen automáticamente al cerrar o mergear el PR.`;
 
             const { data: comments } = await github.rest.issues.listComments({
@@ -121,4 +150,32 @@ jobs:
                 body,
               });
               console.log('Created new PR preview comment');
+            }
+
+      - name: Comment Preview Skipped (Secret unavailable)
+        if: steps.check-secret.outputs.available == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            const botHeader = '### ℹ️ Preview de Firebase Hosting no disponible';
+            const body = `${botHeader}\n\n` +
+              `El secreto \`FIREBASE_SERVICE_ACCOUNT_DEV\` no está disponible para este PR (habitual en ramas de forks externos o dependabot).\n\n` +
+              `El despliegue del canal de preview se omite de forma segura sin bloquear las validaciones de CI.`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const botComment = comments.find(c => c.body && c.body.includes(botHeader));
+            if (!botComment) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+              console.log('Notified preview skipped in PR comments');
             }

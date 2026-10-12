@@ -4,118 +4,155 @@
       <div class="card-body">
         <h2 class="card-title text-center mb-4">Lista de Pedidos</h2>
 
+        <!-- Top Filter Bar -->
         <div class="row g-3 mb-4 align-items-center">
-          <div class="col-12 col-lg-3">
+          <div class="col-12 col-md-8 col-lg-8">
             <app-admin-search-bar
               [placeholder]="'Buscar por ID, Cliente o Estado...'"
               [initialValue]="searchTermSubject.value"
               (searchChange)="onSearchTermChange($event)"
             ></app-admin-search-bar>
           </div>
-          <div class="col-12 col-sm-4 col-lg-3">
-            <select
-              class="form-select glass-input"
-              [ngModel]="filterStatusSubject | async"
-              (ngModelChange)="onFilterStatusChange($event)"
-            >
-              <option value="all">Todos los Estados</option>
-              @for (status of statusOptions.slice(1); track status) {
-                <option [value]="status">
-                  @switch (status) {
-                    @case ('pending') {
-                      Pendiente
-                    }
-                    @case ('processing') {
-                      Procesando
-                    }
-                    @case ('ready_for_pickup') {
-                      Listo para Retirar
-                    }
-                    @case ('shipped') {
-                      Enviado
-                    }
-                    @case ('delivered') {
-                      Entregado
-                    }
-                    @case ('cancelled') {
-                      Cancelado
-                    }
-                    @default {
-                      {{ status | titlecase }}
-                    }
-                  }
-                </option>
-              }
-            </select>
-          </div>
-          <div class="col-12 col-sm-4 col-lg-3">
+          <div class="col-12 col-md-4 col-lg-4">
             <select
               class="form-select glass-input"
               [ngModel]="deliveryFilter()"
               (ngModelChange)="onDeliveryFilterChange($event)"
+              aria-label="Filtrar por método de entrega"
             >
               <option value="all">Todos los Métodos</option>
               <option value="store_pickup">Retiro en Local</option>
               <option value="home_delivery">Envío a Domicilio</option>
             </select>
           </div>
-          <div class="col-12 col-sm-4 col-lg-3">
-            <select
-              class="form-select glass-input"
-              [ngModel]="itemsPerPageSubject | async"
-              (ngModelChange)="onItemsPerPageChange($event)"
+        </div>
+
+        <!-- Mobile Touch Status Chips Carousel -->
+        <div
+          class="status-chips-carousel d-md-none mb-4"
+          role="group"
+          aria-label="Filtrar pedidos por estado"
+        >
+          @for (status of statusOptions; track status) {
+            <button
+              type="button"
+              class="chip-btn"
+              [class.active]="(filterStatusSubject | async) === status"
+              (click)="onFilterStatusChange(status)"
             >
-              @for (option of itemsPerPageOptions; track option) {
-                <option [value]="option">{{ option }} por pág</option>
+              @switch (status) {
+                @case ('all') {
+                  Todos
+                }
+                @case ('pending') {
+                  Pendientes
+                }
+                @case ('processing') {
+                  Procesando
+                }
+                @case ('ready_for_pickup') {
+                  Listo para Retirar
+                }
+                @case ('shipped') {
+                  Enviados
+                }
+                @case ('delivered') {
+                  Entregados
+                }
+                @case ('cancelled') {
+                  Cancelados
+                }
+                @default {
+                  {{ status | titlecase }}
+                }
               }
-            </select>
-          </div>
+            </button>
+          }
         </div>
 
         @if (isLoading()) {
-          <div class="table-responsive" aria-busy="true" aria-label="Cargando pedidos">
+          <!-- Desktop Table Skeleton -->
+          <div
+            class="d-none d-md-block table-responsive"
+            aria-busy="true"
+            aria-label="Cargando pedidos"
+          >
             <table class="table align-middle order-table mb-0 glass-table">
               <thead>
                 <tr>
-                  <th scope="col">ID Pedido</th>
-                  <th scope="col">Cliente</th>
-                  <th scope="col">Fecha</th>
-                  <th scope="col" class="text-center">Método Entrega</th>
+                  <th scope="col" style="width: 12%">ID Pedido</th>
+                  <th scope="col" style="width: 22%">Cliente</th>
+                  <th scope="col" style="width: 14%">Fecha</th>
+                  <th scope="col" class="text-center" style="width: 18%">Método Entrega</th>
                   @if (!isStaff()) {
-                    <th scope="col" class="text-end">Total</th>
+                    <th scope="col" class="text-end" style="width: 12%">Total</th>
                   }
-                  <th scope="col" class="text-center">Estado</th>
-                  <th scope="col" class="text-end">Acciones</th>
+                  <th scope="col" class="text-center" style="width: 14%">Estado</th>
+                  <th scope="col" class="text-end" style="width: 8%">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 @for (_ of [1, 2, 3, 4, 5]; track $index) {
                   <tr class="table-row--skeleton">
-                    <td data-label="ID Pedido">
+                    <td>
                       <div class="skeleton-box skeleton-box--id"></div>
                     </td>
-                    <td data-label="Cliente">
+                    <td>
                       <div class="skeleton-box skeleton-box--client"></div>
                     </td>
-                    <td data-label="Fecha"><div class="skeleton-box skeleton-box--date"></div></td>
-                    <td data-label="Entrega" class="text-center">
+                    <td><div class="skeleton-box skeleton-box--date"></div></td>
+                    <td class="text-center">
                       <div class="skeleton-box skeleton-box--status mx-auto"></div>
                     </td>
                     @if (!isStaff()) {
-                      <td data-label="Total" class="text-end">
+                      <td class="text-end">
                         <div class="skeleton-box skeleton-box--total ms-auto"></div>
                       </td>
                     }
-                    <td data-label="Estado" class="text-center">
+                    <td class="text-center">
                       <div class="skeleton-box skeleton-box--status mx-auto"></div>
                     </td>
-                    <td data-label="Acciones" class="text-end action-cell">
+                    <td class="text-end action-cell">
                       <div class="skeleton-box skeleton-box--actions ms-auto"></div>
                     </td>
                   </tr>
                 }
               </tbody>
             </table>
+          </div>
+
+          <!-- Mobile Cards Skeleton -->
+          <div
+            class="d-md-none order-cards-container d-flex flex-column gap-3"
+            aria-busy="true"
+            aria-label="Cargando pedidos"
+          >
+            @for (_ of [1, 2, 3]; track $index) {
+              <article class="order-mobile-card order-mobile-card--skeleton">
+                <div
+                  class="order-mobile-card__header d-flex justify-content-between align-items-center mb-2"
+                >
+                  <div class="d-flex flex-column gap-1">
+                    <div class="skeleton-box skeleton-box--id"></div>
+                    <div class="skeleton-box skeleton-box--date"></div>
+                  </div>
+                  <div class="skeleton-box skeleton-box--status"></div>
+                </div>
+                <div class="order-mobile-card__body d-flex flex-column gap-2 mb-3">
+                  <div class="skeleton-box skeleton-box--client"></div>
+                  <div class="skeleton-box skeleton-box--delivery"></div>
+                </div>
+                <div
+                  class="order-mobile-card__footer d-flex justify-content-between align-items-center pt-2"
+                >
+                  <div class="skeleton-box skeleton-box--total"></div>
+                  <div class="d-flex gap-2">
+                    <div class="skeleton-box skeleton-box--actions"></div>
+                    <div class="skeleton-box skeleton-box--actions"></div>
+                  </div>
+                </div>
+              </article>
+            }
           </div>
         } @else if (orders$ | async; as orders) {
           @if (orders.length === 0) {
@@ -147,26 +184,35 @@
               </p>
             </div>
           } @else {
-            <div class="table-responsive">
+            <!-- Desktop Table View -->
+            <div class="d-none d-md-block table-responsive">
               <table class="table align-middle order-table mb-0 glass-table">
                 <thead>
                   <tr>
-                    <th scope="col">ID Pedido</th>
-                    <th scope="col">Cliente</th>
-                    <th scope="col">Fecha</th>
-                    <th scope="col" class="text-center">Método Entrega</th>
+                    <th scope="col" style="width: 12%">ID Pedido</th>
+                    <th scope="col" style="width: 22%">Cliente</th>
+                    <th scope="col" style="width: 14%">Fecha</th>
+                    <th scope="col" class="text-center" style="width: 18%">Método Entrega</th>
                     @if (!isStaff()) {
-                      <th scope="col" class="text-end">Total</th>
+                      <th scope="col" class="text-end" style="width: 12%">Total</th>
                     }
-                    <th scope="col" class="text-center">Estado</th>
-                    <th scope="col" class="text-end">Acciones</th>
+                    <th scope="col" class="text-center" style="width: 14%">Estado</th>
+                    <th scope="col" class="text-end" style="width: 8%">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (order of orders; track order.id) {
                     <tr>
-                      <td data-label="ID Pedido" class="order-id">{{ order.id }}</td>
-                      <td data-label="Cliente" class="order-client">{{ order.clientName }}</td>
+                      <td data-label="ID Pedido" class="order-id text-truncate" [title]="order.id">
+                        {{ order.id }}
+                      </td>
+                      <td
+                        data-label="Cliente"
+                        class="order-client text-truncate"
+                        [title]="order.clientName"
+                      >
+                        {{ order.clientName }}
+                      </td>
                       <td data-label="Fecha" class="order-date">
                         {{ order.orderDate | date: 'short' }}
                       </td>
@@ -187,61 +233,26 @@
                         </td>
                       }
                       <td data-label="Estado" class="text-center order-status">
-                        <span
-                          class="badge glass-badge"
-                          [ngClass]="{
-                            'badge-warning': order.status === 'pending',
-                            'badge-primary':
-                              order.status === 'processing' || order.status === 'ready_for_pickup',
-                            'badge-info': order.status === 'shipped',
-                            'badge-success': order.status === 'delivered',
-                            'badge-danger': order.status === 'cancelled',
-                          }"
+                        <select
+                          class="form-select form-select-sm glass-status-select mx-auto"
+                          [ngClass]="'status--' + order.status"
+                          [ngModel]="order.status"
+                          (ngModelChange)="updateOrderStatus(order, $event)"
+                          title="Cambiar estado de orden"
+                          aria-label="Cambiar estado de orden"
                         >
-                          @switch (order.status) {
-                            @case ('pending') {
-                              <span>Pendiente</span>
-                            }
-                            @case ('processing') {
-                              <span>Procesando</span>
-                            }
-                            @case ('ready_for_pickup') {
-                              <span>Listo para Retirar</span>
-                            }
-                            @case ('shipped') {
-                              <span>Enviado</span>
-                            }
-                            @case ('delivered') {
-                              <span>Entregado</span>
-                            }
-                            @case ('cancelled') {
-                              <span>Cancelado</span>
-                            }
-                            @default {
-                              <span>{{ order.status | titlecase }}</span>
-                            }
-                          }
-                        </span>
+                          <option value="pending">Pendiente</option>
+                          <option value="processing">Procesando</option>
+                          <option value="ready_for_pickup">Listo para Retirar</option>
+                          <option value="shipped">Enviado</option>
+                          <option value="delivered">Entregado</option>
+                          <option value="cancelled">Cancelado</option>
+                        </select>
                       </td>
                       <td data-label="Acciones" class="text-end action-cell">
                         <div
-                          class="action-wrapper d-flex justify-content-end align-items-center gap-2 flex-nowrap"
+                          class="action-wrapper d-inline-flex justify-content-end align-items-center gap-2"
                         >
-                          <select
-                            class="form-select form-select-sm glass-input d-none d-md-inline-block py-1 px-2 fs-7"
-                            style="width: auto; min-width: 120px"
-                            [ngModel]="order.status"
-                            (ngModelChange)="updateOrderStatus(order, $event)"
-                            title="Cambiar estado de orden"
-                            aria-label="Cambiar estado de orden"
-                          >
-                            <option value="pending">Pendiente</option>
-                            <option value="processing">Procesando</option>
-                            <option value="ready_for_pickup">Listo para Retirar</option>
-                            <option value="shipped">Enviado</option>
-                            <option value="delivered">Entregado</option>
-                            <option value="cancelled">Cancelado</option>
-                          </select>
                           <button
                             class="btn-glass-primary m-0"
                             [routerLink]="['/admin/orders', order.id]"
@@ -264,6 +275,100 @@
                   }
                 </tbody>
               </table>
+            </div>
+
+            <!-- Mobile Cards View -->
+            <div class="d-md-none order-cards-container d-flex flex-column gap-3">
+              @for (order of orders; track order.id) {
+                <article class="order-mobile-card">
+                  <div
+                    class="order-mobile-card__header d-flex justify-content-between align-items-center mb-2"
+                  >
+                    <div class="d-flex flex-column overflow-hidden me-2">
+                      <span class="order-id text-truncate font-monospace" [title]="order.id">
+                        #{{ order.id }}
+                      </span>
+                      <span class="order-date text-muted-custom small">
+                        {{ order.orderDate | date: 'short' }}
+                      </span>
+                    </div>
+                    <div class="order-status-wrapper flex-shrink-0">
+                      <select
+                        class="form-select form-select-sm glass-status-select"
+                        [ngClass]="'status--' + order.status"
+                        [ngModel]="order.status"
+                        (ngModelChange)="updateOrderStatus(order, $event)"
+                        title="Cambiar estado de orden"
+                        aria-label="Cambiar estado de orden"
+                      >
+                        <option value="pending">Pendiente</option>
+                        <option value="processing">Procesando</option>
+                        <option value="ready_for_pickup">Listo para Retirar</option>
+                        <option value="shipped">Enviado</option>
+                        <option value="delivered">Entregado</option>
+                        <option value="cancelled">Cancelado</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="order-mobile-card__body d-flex flex-column gap-2 mb-3">
+                    <div
+                      class="order-client fw-semibold text-truncate text-light"
+                      [title]="order.clientName"
+                    >
+                      {{ order.clientName }}
+                    </div>
+                    <div class="order-delivery d-flex align-items-center gap-2">
+                      @let badge = getDeliveryBadge(order);
+                      <span
+                        class="badge-delivery"
+                        [ngClass]="badge.cssClass"
+                        [title]="badge.summary || badge.label"
+                      >
+                        <i class="bi" [ngClass]="badge.icon" aria-hidden="true"></i>
+                        <span>{{ badge.label }}</span>
+                      </span>
+                      @if (badge.summary) {
+                        <span class="text-muted-custom small text-truncate" [title]="badge.summary">
+                          {{ badge.summary }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+
+                  <div
+                    class="order-mobile-card__footer d-flex justify-content-between align-items-center pt-2"
+                  >
+                    <div class="order-total">
+                      @if (!isStaff()) {
+                        <span class="fs-5 fw-bold text-light">
+                          {{ order.total | currency: 'ARS' : '$' }}
+                        </span>
+                      }
+                    </div>
+                    <div class="order-actions d-flex align-items-center gap-2">
+                      <button
+                        type="button"
+                        class="btn-glass-primary m-0"
+                        [routerLink]="['/admin/orders', order.id]"
+                        title="Ver Detalles"
+                        aria-label="Ver detalles del pedido"
+                      >
+                        <i class="bi bi-eye" aria-hidden="true"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-glass-danger m-0"
+                        (click)="deleteOrder(order)"
+                        title="Eliminar"
+                        aria-label="Eliminar pedido"
+                      >
+                        <i class="bi bi-trash" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              }
             </div>
 
             @if (totalOrders > 0) {

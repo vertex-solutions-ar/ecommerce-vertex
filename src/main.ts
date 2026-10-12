@@ -29,6 +29,25 @@ try {
   meta.name = 'app-version';
   meta.content = APP_VERSION;
   document.head.appendChild(meta);
+
+  // Procedencia del build: permite verificar desde el sitio qué ref se compiló realmente
+  // (una rama de prueba no debe verse como una release). Ver deployment-source.ts.
+  const sourceRef = (BUILD_INFO as { sourceRef?: string }).sourceRef ?? '';
+  const sourceKind = (BUILD_INFO as { sourceKind?: string }).sourceKind ?? 'release';
+  (globalThis as Record<string, unknown>)['__VERTEX_STORE_SOURCE__'] = {
+    kind: sourceKind,
+    ref: sourceRef || APP_VERSION,
+  };
+  if (sourceRef) {
+    const sourceMeta = document.createElement('meta');
+    sourceMeta.name = 'app-source-ref';
+    sourceMeta.content = sourceRef;
+    document.head.appendChild(sourceMeta);
+  }
+  const sourceKindMeta = document.createElement('meta');
+  sourceKindMeta.name = 'app-source-kind';
+  sourceKindMeta.content = sourceKind;
+  document.head.appendChild(sourceKindMeta);
 } catch {
   // Non-fatal: la app arranca igual sin los expositores de versión.
 }

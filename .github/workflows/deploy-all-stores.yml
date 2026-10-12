@@ -194,7 +194,7 @@ jobs:
           curl -s -X POST \
             "${{ env.PLATFORM_FUNCTIONS_URL }}/completeVersionUpdate" \
             -H "Content-Type: application/json" \
-            -d "{\"data\":{\"storeId\":\"${{ matrix.store.storeId }}\",\"version\":\"$VERSION\",\"success\":true,\"commitSha\":\"${{ github.sha }}\",\"idToken\":\"$ID_TOKEN\"}}"
+            -d "{\"data\":{\"storeId\":\"${{ matrix.store.storeId }}\",\"version\":\"$VERSION\",\"success\":true,\"commitSha\":\"${{ github.sha }}\",\"idToken\":\"$ID_TOKEN\",\"sourceKind\":\"release\",\"sourceRef\":\"v$VERSION\",\"sourceSha\":\"${{ github.sha }}\"}}"
 
   # ── 4. Deploy rest in parallel (only if canary passed) ────────────────────
   deploy-rest:
@@ -285,4 +285,4 @@ jobs:
           curl -s -X POST \
             "${{ env.PLATFORM_FUNCTIONS_URL }}/completeVersionUpdate" \
             -H "Content-Type: application/json" \
-            -d "{\"data\":{\"storeId\":\"${{ matrix.store.storeId }}\",\"version\":\"$VERSION\",\"success\":true,\"commitSha\":\"${{ github.sha }}\",\"idToken\":\"$ID_TOKEN\"}}"
+            -d "{\"data\":{\"storeId\":\"${{ matrix.store.storeId }}\",\"version\":\"$VERSION\",\"success\":true,\"commitSha\":\"${{ github.sha }}\",\"idToken\":\"$ID_TOKEN\",\"sourceKind\":\"release\",\"sourceRef\":\"v$VERSION\",\"sourceSha\":\"${{ github.sha }}\"}}"

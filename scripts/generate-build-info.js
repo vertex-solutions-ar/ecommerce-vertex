@@ -34,6 +34,27 @@ function getEnvironmentName() {
   return process.env.NODE_ENV || process.env.VERCEL_ENV || process.env.ENVIRONMENT || 'production';
 }
 
+/**
+ * Procedencia real del build: de qué ref de git se compiló.
+ *
+ * El workflow de provisión exporta DEPLOY_SOURCE_KIND / DEPLOY_SOURCE_REF a partir del
+ * `client_payload.ref` despachado por la plataforma:
+ *  - `release` → tag publicado `vX.Y.Z` (canal estable)
+ *  - `branch`  → rama (ej. `develop`, `feat/x`) — despliegue de prueba, sin tag
+ *  - `commit`  → SHA puntual — despliegue de prueba, sin tag
+ *
+ * Sin estas variables (build local o `deploy-all-stores`) se asume `release`, que es el
+ * caso histórico: compilar un tag/release.
+ */
+function getSourceKind() {
+  const raw = (process.env.DEPLOY_SOURCE_KIND || '').trim().toLowerCase();
+  return ['release', 'branch', 'commit'].includes(raw) ? raw : 'release';
+}
+
+function getSourceRef() {
+  return (process.env.DEPLOY_SOURCE_REF || '').trim();
+}
+
 function main() {
   const version = getPackageVersion();
   const commitSha = getCommitSha();
@@ -45,6 +66,8 @@ function main() {
     process.env.IS_REDEPLOY !== undefined
       ? process.env.IS_REDEPLOY === 'true' || process.env.IS_REDEPLOY === '1'
       : redeployNumber > 0;
+  const sourceKind = getSourceKind();
+  const sourceRef = getSourceRef();
 
   const buildInfo = {
     version,
@@ -55,6 +78,8 @@ function main() {
     redeployNumber,
     isRedeploy,
     deployTimestamp,
+    sourceKind,
+    sourceRef,
   };
 
   const environmentsDir = path.resolve(__dirname, '../src/environments');
@@ -79,6 +104,8 @@ export const BUILD_INFO = {
   redeployNumber: ${redeployNumber},
   isRedeploy: ${isRedeploy},
   deployTimestamp: '${deployTimestamp}',
+  sourceKind: '${sourceKind}',
+  sourceRef: '${sourceRef}',
 } as const;
 `;
 
