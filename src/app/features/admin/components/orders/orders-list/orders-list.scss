@@ -165,8 +165,9 @@
   background-size: 10px 10px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
   transition: all 0.2s ease;
-  width: auto;
+  width: 100%;
   max-width: 100%;
+  text-overflow: ellipsis;
 
   &:focus {
     outline: none;
@@ -252,13 +253,26 @@
     padding: 1.1rem 0.5rem;
     vertical-align: middle;
     border: none;
+
+    &.order-total {
+      white-space: nowrap !important;
+    }
+  }
+
+  .order-total {
+    white-space: nowrap !important;
   }
 }
 
+th.order-total,
+td.order-total,
+.order-total {
+  white-space: nowrap !important;
+}
+
 .action-cell {
-  width: 8%;
-  min-width: 88px;
-  max-width: 88px;
+  white-space: nowrap;
+  justify-content: flex-end;
 
   .action-wrapper {
     display: inline-flex;
