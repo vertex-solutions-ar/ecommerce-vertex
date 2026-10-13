@@ -48,7 +48,7 @@
     "@popperjs/core": "^2.11.8",
     "@vertex/contracts": "file:./packages/shared-contracts",
     "bootstrap": "^5.3.8",
-    "bootstrap-icons": "^1.13.1",
+    "bootstrap-icons": "^1.13.2",
     "firebase": "^11.10.0",
     "heic2any": "^0.0.4",
     "ngx-quill": "^31.0.0",
