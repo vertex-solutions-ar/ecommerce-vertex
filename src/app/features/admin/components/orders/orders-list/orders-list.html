@@ -80,15 +80,19 @@
             <table class="table align-middle order-table mb-0 glass-table">
               <thead>
                 <tr>
-                  <th scope="col" style="width: 12%">ID Pedido</th>
-                  <th scope="col" style="width: 22%">Cliente</th>
-                  <th scope="col" style="width: 14%">Fecha</th>
-                  <th scope="col" class="text-center" style="width: 18%">Método Entrega</th>
+                  <th scope="col" class="order-id text-truncate" style="width: 10%">ID Pedido</th>
+                  <th scope="col" class="order-client text-truncate" style="width: 17%">Cliente</th>
+                  <th scope="col" class="order-date" style="width: 12%; white-space: nowrap">
+                    Fecha
+                  </th>
+                  <th scope="col" class="text-center order-delivery" style="width: 16%">
+                    Método Entrega
+                  </th>
                   @if (!isStaff()) {
-                    <th scope="col" class="text-end" style="width: 12%">Total</th>
+                    <th scope="col" class="text-end order-total" style="width: 14%">Total</th>
                   }
-                  <th scope="col" class="text-center" style="width: 14%">Estado</th>
-                  <th scope="col" class="text-end" style="width: 8%">Acciones</th>
+                  <th scope="col" class="text-center order-status" style="width: 19%">Estado</th>
+                  <th scope="col" class="text-end action-cell" style="width: 12%">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -189,15 +193,21 @@
               <table class="table align-middle order-table mb-0 glass-table">
                 <thead>
                   <tr>
-                    <th scope="col" style="width: 12%">ID Pedido</th>
-                    <th scope="col" style="width: 22%">Cliente</th>
-                    <th scope="col" style="width: 14%">Fecha</th>
-                    <th scope="col" class="text-center" style="width: 18%">Método Entrega</th>
+                    <th scope="col" class="order-id text-truncate" style="width: 10%">ID Pedido</th>
+                    <th scope="col" class="order-client text-truncate" style="width: 17%">
+                      Cliente
+                    </th>
+                    <th scope="col" class="order-date" style="width: 12%; white-space: nowrap">
+                      Fecha
+                    </th>
+                    <th scope="col" class="text-center order-delivery" style="width: 16%">
+                      Método Entrega
+                    </th>
                     @if (!isStaff()) {
-                      <th scope="col" class="text-end" style="width: 12%">Total</th>
+                      <th scope="col" class="text-end order-total" style="width: 14%">Total</th>
                     }
-                    <th scope="col" class="text-center" style="width: 14%">Estado</th>
-                    <th scope="col" class="text-end" style="width: 8%">Acciones</th>
+                    <th scope="col" class="text-center order-status" style="width: 19%">Estado</th>
+                    <th scope="col" class="text-end action-cell" style="width: 12%">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
