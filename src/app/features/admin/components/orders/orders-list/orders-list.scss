@@ -234,6 +234,14 @@
     letter-spacing: 0.08em;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     white-space: nowrap;
+
+    &.order-delivery {
+      padding-right: 0.75rem;
+    }
+
+    &.order-total {
+      padding-left: 0.75rem;
+    }
   }
 
   tbody tr {
@@ -254,8 +262,14 @@
     vertical-align: middle;
     border: none;
 
+    &.order-delivery {
+      padding-right: 0.75rem;
+    }
+
     &.order-total {
       white-space: nowrap !important;
+      font-variant-numeric: tabular-nums;
+      padding-left: 0.75rem;
     }
   }
 
@@ -268,6 +282,16 @@ th.order-total,
 td.order-total,
 .order-total {
   white-space: nowrap !important;
+}
+
+td.order-delivery {
+  padding-right: 0.75rem;
+}
+
+td.order-total {
+  white-space: nowrap !important;
+  font-variant-numeric: tabular-nums;
+  padding-left: 0.75rem;
 }
 
 .action-cell {
@@ -410,14 +434,14 @@ td.order-total,
 }
 
 .badge-delivery {
-  padding: 0.4rem 0.85rem;
+  padding: 0.3rem 0.65rem;
   border-radius: 20px;
   font-weight: 600;
   font-size: 0.78rem;
   letter-spacing: 0.02em;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   white-space: nowrap;
   transition: all 0.2s ease;
 
