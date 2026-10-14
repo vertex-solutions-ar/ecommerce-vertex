@@ -570,8 +570,11 @@
               </div>
 
               @if (totalPages > 1) {
-                <nav aria-label="Navegación de páginas de variantes" class="mt-3">
-                  <ul class="pagination justify-content-center glass-pagination">
+                <nav
+                  aria-label="Navegación de páginas de variantes"
+                  class="variant-pagination-container variant-pagination-wrapper mt-3"
+                >
+                  <ul class="pagination glass-pagination variant-pagination mb-0">
                     <li class="page-item" [class.disabled]="currentPage === 1">
                       <button
                         type="button"

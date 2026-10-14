@@ -844,21 +844,65 @@ select.glass-input {
   }
 }
 
+.variant-pagination-container,
+.variant-pagination-wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.variant-pagination,
 .glass-pagination {
-  .page-item .page-link {
-    border-radius: 10px !important;
-    margin: 0 3px;
+  width: 100%;
+  max-width: 100%;
+
+  // En Mobile (< 768px)
+  @media (max-width: 767.98px) {
+    display: flex;
+    justify-content: flex-start; // Eliminar el centrado rígido que corta los extremos
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; // Ocultar scrollbar en Firefox
+    &::-webkit-scrollbar {
+      display: none; // Ocultar scrollbar en Chrome/Safari
+    }
+    padding: 0.5rem 0.75rem;
+    gap: 0.4rem;
+  }
+
+  // En Desktop (>= 768px)
+  @media (min-width: 768px) {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    overflow: visible;
+  }
+
+  .page-item {
+    flex-shrink: 0; // Evitar que se deformen o aplasten
+  }
+
+  .page-item .page-link,
+  .page-link {
+    flex-shrink: 0; // Evitar que se deformen o aplasten
+    min-width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    border-radius: var(--radius-md, 8px) !important;
+    margin: 0;
     border: 1px solid rgba(255, 255, 255, 0.08);
     font-weight: 700;
     color: rgba(255, 255, 255, 0.5);
     background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
     cursor: pointer;
 
     &:hover {
