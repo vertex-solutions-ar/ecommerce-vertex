@@ -192,41 +192,55 @@
       </section>
 
       <section>
+        <h2 class="dashboard__section-title">Actividades Recientes</h2>
+
         <div
           class="d-flex justify-content-around mb-3 d-md-none glass-panel p-1 rounded-pill nav-tabs-mobile"
+          role="tablist"
+          aria-label="Tabs de actividades recientes"
         >
           <button
-            class="btn btn-sm rounded-pill flex-fill"
-            [class.btn-primary]="activeTab() === 'orders'"
-            [class.btn-ghost]="activeTab() !== 'orders'"
-            (click)="activeTab.set('orders')"
+            type="button"
+            role="tab"
+            class="nav-tab-btn rounded-pill flex-fill"
+            [class.active]="activeRecentTab() === 0"
+            [attr.aria-selected]="activeRecentTab() === 0"
+            (click)="selectRecentTab(0)"
           >
             Pedidos
           </button>
           <button
-            class="btn btn-sm rounded-pill flex-fill"
-            [class.btn-primary]="activeTab() === 'clients'"
-            [class.btn-ghost]="activeTab() !== 'clients'"
-            (click)="activeTab.set('clients')"
+            type="button"
+            role="tab"
+            class="nav-tab-btn rounded-pill flex-fill"
+            [class.active]="activeRecentTab() === 1"
+            [attr.aria-selected]="activeRecentTab() === 1"
+            (click)="selectRecentTab(1)"
           >
             Clientes
           </button>
           <button
-            class="btn btn-sm rounded-pill flex-fill"
-            [class.btn-primary]="activeTab() === 'products'"
-            [class.btn-ghost]="activeTab() !== 'products'"
-            (click)="activeTab.set('products')"
+            type="button"
+            role="tab"
+            class="nav-tab-btn rounded-pill flex-fill"
+            [class.active]="activeRecentTab() === 2"
+            [attr.aria-selected]="activeRecentTab() === 2"
+            (click)="selectRecentTab(2)"
           >
             Productos
           </button>
         </div>
 
-        <div class="row g-4">
-          <div
-            class="col-12 col-md-6 col-xl-4"
-            [class.d-none]="isMobile() && activeTab() !== 'orders'"
-          >
-            <div class="card glass-card card-recent-orders" [class.active-glow]="isMobile()">
+        <div
+          #activitiesTrack
+          class="recent-activities-track row g-4"
+          (scroll)="onActivitiesScroll()"
+        >
+          <div class="activity-card-slide col-12 col-md-4">
+            <div
+              class="card glass-card card-recent-orders"
+              [class.active-glow]="isMobile() && activeRecentTab() === 0"
+            >
               <div class="card-header border-0 text-center fw-bold d-none d-md-block">
                 <i class="bi bi-cart-check me-2"></i>Últimos Pedidos
               </div>
@@ -278,11 +292,11 @@
             </div>
           </div>
 
-          <div
-            class="col-12 col-md-6 col-xl-4"
-            [class.d-none]="isMobile() && activeTab() !== 'clients'"
-          >
-            <div class="card glass-card card-recent-clients" [class.active-glow]="isMobile()">
+          <div class="activity-card-slide col-12 col-md-4">
+            <div
+              class="card glass-card card-recent-clients"
+              [class.active-glow]="isMobile() && activeRecentTab() === 1"
+            >
               <div class="card-header border-0 text-center fw-bold d-none d-md-block">
                 <i class="bi bi-people me-2"></i>Últimos Clientes
               </div>
@@ -329,11 +343,11 @@
             </div>
           </div>
 
-          <div
-            class="col-12 col-md-12 col-xl-4"
-            [class.d-none]="isMobile() && activeTab() !== 'products'"
-          >
-            <div class="card glass-card card-recent-products" [class.active-glow]="isMobile()">
+          <div class="activity-card-slide col-12 col-md-4">
+            <div
+              class="card glass-card card-recent-products"
+              [class.active-glow]="isMobile() && activeRecentTab() === 2"
+            >
               <div class="card-header border-0 text-center fw-bold d-none d-md-block">
                 <i class="bi bi-box-seam me-2"></i>Últimos Productos
               </div>
