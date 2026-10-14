@@ -119,12 +119,18 @@ describe('Dashboard', () => {
     });
   });
 
-  it('should change activeTab via setTab', () => {
+  it('should change activeTab and activeRecentTab via setTab', () => {
+    component.setTab('orders');
+    expect(component.activeTab()).toBe('orders');
+    expect(component.activeRecentTab()).toBe(0);
+
     component.setTab('clients');
     expect(component.activeTab()).toBe('clients');
+    expect(component.activeRecentTab()).toBe(1);
 
     component.setTab('products');
     expect(component.activeTab()).toBe('products');
+    expect(component.activeRecentTab()).toBe(2);
   });
 
   it('should update screenWidth on window resize listener', () => {
@@ -133,5 +139,86 @@ describe('Dashboard', () => {
 
     expect(component.screenWidth()).toBe(500);
     expect(component.isMobile()).toBeTrue();
+  });
+
+  it('should change tab and scroll track on selectRecentTab with slides', () => {
+    const mockTrack = document.createElement('div');
+    const slide1 = document.createElement('div');
+    slide1.className = 'activity-card-slide';
+    const slide2 = document.createElement('div');
+    slide2.className = 'activity-card-slide';
+    mockTrack.appendChild(slide1);
+    mockTrack.appendChild(slide2);
+    spyOn(mockTrack, 'scrollTo');
+    component.activitiesTrack = { nativeElement: mockTrack };
+
+    component.selectRecentTab(1);
+
+    expect(component.activeRecentTab()).toBe(1);
+    expect(component.activeTab()).toBe('clients');
+    expect(mockTrack.scrollTo).toHaveBeenCalled();
+
+    // Call again to test clearTimeout when timer is already active
+    component.selectRecentTab(0);
+    expect(component.activeRecentTab()).toBe(0);
+  });
+
+  it('should handle selectRecentTab when track has no slides (fallback)', () => {
+    const emptyTrack = document.createElement('div');
+    spyOn(emptyTrack, 'scrollTo');
+    component.activitiesTrack = { nativeElement: emptyTrack };
+
+    component.selectRecentTab(1);
+    expect(emptyTrack.scrollTo).toHaveBeenCalled();
+  });
+
+  it('should clamp selectRecentTab index if out of bounds', () => {
+    component.activitiesTrack = undefined;
+    component.selectRecentTab(-5);
+    expect(component.activeRecentTab()).toBe(0);
+
+    component.selectRecentTab(99);
+    expect(component.activeRecentTab()).toBe(2);
+  });
+
+  it('should clean up timer on ngOnDestroy', () => {
+    expect(() => component.ngOnDestroy()).not.toThrow();
+  });
+
+  it('should ignore onActivitiesScroll when programmatic scroll is active', () => {
+    const mockTrack = document.createElement('div');
+    spyOn(mockTrack, 'scrollTo');
+    component.activitiesTrack = { nativeElement: mockTrack };
+    component.selectRecentTab(1);
+
+    component.onActivitiesScroll();
+    expect(component.activeRecentTab()).toBe(1);
+  });
+
+  it('should handle onActivitiesScroll when activitiesTrack is undefined or clientWidth is 0', () => {
+    component.activitiesTrack = undefined;
+    expect(() => component.onActivitiesScroll()).not.toThrow();
+
+    component.activitiesTrack = {
+      nativeElement: { clientWidth: 0, scrollLeft: 0 } as unknown as HTMLElement,
+    };
+    expect(() => component.onActivitiesScroll()).not.toThrow();
+  });
+
+  it('should update activeRecentTab on activities scroll when position changes', () => {
+    component.activitiesTrack = {
+      nativeElement: {
+        clientWidth: 400,
+        scrollLeft: 400,
+      } as unknown as HTMLElement,
+    };
+
+    component.onActivitiesScroll();
+    expect(component.activeRecentTab()).toBe(1);
+    expect(component.activeTab()).toBe('clients');
+
+    // Call again with same position to hit branch when activeRecentTab === safeIndex
+    component.onActivitiesScroll();
+    expect(component.activeRecentTab()).toBe(1);
   });
 });
