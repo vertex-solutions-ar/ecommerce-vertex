@@ -314,6 +314,24 @@ describe('ProductsList', () => {
       expect(setDensitySpy).toHaveBeenCalledWith('list');
     });
 
+    it('should change density when clicking mobile view toggle buttons in utility row', () => {
+      const mobileButtons = fixture.nativeElement.querySelectorAll(
+        '.products__mobile-utility .view-toggle button.density-btn',
+      );
+      expect(mobileButtons.length).toBe(3);
+
+      const setDensitySpy = spyOn(component, 'setDensity').and.callThrough();
+
+      mobileButtons[0].click();
+      expect(setDensitySpy).toHaveBeenCalledWith('compact');
+
+      mobileButtons[1].click();
+      expect(setDensitySpy).toHaveBeenCalledWith('comfortable');
+
+      mobileButtons[2].click();
+      expect(setDensitySpy).toHaveBeenCalledWith('list');
+    });
+
     it('should render category pills and action cell wrapper in table view', fakeAsync(() => {
       const localFixture = TestBed.createComponent(ProductsList);
       const localComp = localFixture.componentInstance;
