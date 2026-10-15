@@ -1,5 +1,13 @@
 # Changelog — ecommerce-vertex (storefront)
 
+## [0.9.6] - 2026-10-15
+
+### Added
+- **Metadata de procedencia del build:** `assets/version.json` y `window.__VERTEX_STORE_SOURCE__` ahora exponen `sourceKind`, `sourceRef` y `commitSha`. Un build compilado desde una rama o un commit ya no se confunde con una release publicada, y el panel puede verificar qué se desplegó en cada tienda.
+
+### Fixed
+- **Layout y responsive del panel de administración:** dashboard (slider de actividad reciente en mobile), listado de pedidos (desktop y mobile), detalle de producto y creación de producto.
+
 ## [0.9.3] - 2026-09-16
 
 ### Fixed
