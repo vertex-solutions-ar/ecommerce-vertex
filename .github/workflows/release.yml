@@ -83,14 +83,29 @@ jobs:
       - name: Dispatch to vertex-platform
         env:
           PLATFORM_DISPATCH_TOKEN: ${{ secrets.PLATFORM_DEPLOY_TOKEN }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_PAT }}
           VERSION: ${{ needs.validate-tag-source.outputs.version }}
         run: |
-          curl -s -X POST \
-            -H "Authorization: token $PLATFORM_DISPATCH_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/vertex-solutions-ar/vertex-platform/dispatches" \
-            -d "{\"event_type\": \"storefront-release\", \"client_payload\": {\"version\": \"$VERSION\", \"tag\": \"v$VERSION\"}}"
-          echo "✅ Notified vertex-platform of storefront release v$VERSION"
+          # `curl -s` NO falla con un HTTP 401/403: el step reportaba "✅ Notified"
+          # aunque el token estuviera vencido (pasó con v0.9.5 y v0.9.6, y por eso
+          # CURRENT_TEMPLATE_VERSION quedó atrasado en la plataforma). Ahora se usa
+          # --fail-with-body, hay fallback con ADMIN_PAT y si ninguno sirve el job falla.
+          dispatch() {
+            curl -sS --fail-with-body --max-time 30 -X POST \
+              -H "Authorization: token $1" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/vertex-solutions-ar/vertex-platform/dispatches" \
+              -d "{\"event_type\": \"storefront-release\", \"client_payload\": {\"version\": \"$VERSION\", \"tag\": \"v$VERSION\"}}"
+          }
+
+          if dispatch "$PLATFORM_DISPATCH_TOKEN" >/dev/null; then
+            echo "✅ Notified vertex-platform of storefront release v$VERSION"
+          elif [ -n "$ADMIN_TOKEN" ] && dispatch "$ADMIN_TOKEN" >/dev/null; then
+            echo "::warning::PLATFORM_DEPLOY_TOKEN no sirve (credentials); se notificó con ADMIN_PAT"
+          else
+            echo "::error::No se pudo notificar a vertex-platform del release v$VERSION. Revisá PLATFORM_DEPLOY_TOKEN / ADMIN_PAT."
+            exit 1
+          fi
 
       - name: Trigger deploy-all-stores
         env:
