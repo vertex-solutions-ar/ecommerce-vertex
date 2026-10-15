@@ -90,12 +90,20 @@
 }
 
 // Info
+.product-info {
+  min-width: 0;
+}
+
 .product-info__title {
   font-size: clamp(1.5rem, 3vw, 2.25rem);
   font-weight: 700;
   margin: 0 0 var(--space-2);
   color: var(--text-primary);
   letter-spacing: -0.02em;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.25;
 }
 
 .product-info__price {

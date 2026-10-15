@@ -1,19 +1,19 @@
 <section class="product-detail-wrapper" aria-label="Detalle de producto">
   @if (data$ | async; as data) {
     <div class="detail-container">
-      <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+      <div class="product-header d-flex align-items-center gap-3 mb-4">
         <button
           type="button"
           (click)="goBack()"
-          class="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center"
+          class="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
           style="width: 36px; height: 36px; min-width: 36px"
           aria-label="Volver"
         >
           <i class="bi bi-arrow-left"></i>
         </button>
-        <div class="flex-grow-1 min-w-0">
-          <h1 class="h4 mb-0 text-truncate">{{ data.product.name }}</h1>
-          <p class="text-muted small mb-0">
+        <div class="product-header-info flex-grow-1 min-w-0">
+          <h1 class="product-title h4 mb-1">{{ data.product.name }}</h1>
+          <p class="product-subtitle text-muted small mb-0">
             Detalle general del producto, precios y variantes de stock
           </p>
         </div>
