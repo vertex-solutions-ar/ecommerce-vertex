@@ -98,12 +98,14 @@ jobs:
               -d "{\"event_type\": \"storefront-release\", \"client_payload\": {\"version\": \"$VERSION\", \"tag\": \"v$VERSION\"}}"
           }
 
-          if dispatch "$PLATFORM_DISPATCH_TOKEN" >/dev/null; then
+          # ADMIN_PAT primero: PLATFORM_DEPLOY_TOKEN está vencido (devuelve 401), y así
+          # el release no depende de un secreto que hay que rotar a mano.
+          if [ -n "$ADMIN_TOKEN" ] && dispatch "$ADMIN_TOKEN" >/dev/null; then
             echo "✅ Notified vertex-platform of storefront release v$VERSION"
-          elif [ -n "$ADMIN_TOKEN" ] && dispatch "$ADMIN_TOKEN" >/dev/null; then
-            echo "::warning::PLATFORM_DEPLOY_TOKEN no sirve (credentials); se notificó con ADMIN_PAT"
+          elif dispatch "$PLATFORM_DISPATCH_TOKEN" >/dev/null; then
+            echo "✅ Notified vertex-platform of storefront release v$VERSION (PLATFORM_DEPLOY_TOKEN)"
           else
-            echo "::error::No se pudo notificar a vertex-platform del release v$VERSION. Revisá PLATFORM_DEPLOY_TOKEN / ADMIN_PAT."
+            echo "::error::No se pudo notificar a vertex-platform del release v$VERSION. Revisá ADMIN_PAT / PLATFORM_DEPLOY_TOKEN."
             exit 1
           fi
 
