@@ -1,11 +1,13 @@
 // Auto-generated build stamping metadata
 export const BUILD_INFO = {
-  version: '0.9.5',
-  commitSha: '4771450',
-  timestamp: '2026-10-10T01:23:18.096Z',
+  version: '0.9.6',
+  commitSha: '9586820',
+  timestamp: '2026-10-15T03:19:24.292Z',
   env: 'production',
   deployNumber: 1,
   redeployNumber: 0,
   isRedeploy: false,
-  deployTimestamp: '2026-10-10T01:23:18.096Z',
+  deployTimestamp: '2026-10-15T03:19:24.292Z',
+  sourceKind: 'release',
+  sourceRef: '',
 } as const;
