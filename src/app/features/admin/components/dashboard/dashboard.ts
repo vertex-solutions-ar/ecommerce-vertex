@@ -1,4 +1,4 @@
-import type { OnInit } from '@angular/core';
+import type { OnInit, OnDestroy, ElementRef } from '@angular/core';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -6,6 +6,7 @@ import {
   signal,
   HostListener,
   computed,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe, SlicePipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -27,7 +28,7 @@ import type { Client } from '@core/models/client.model';
   styleUrl: './dashboard.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class Dashboard implements OnInit {
+export class Dashboard implements OnInit, OnDestroy {
   private productService = inject(ProductService);
   private orderService = inject(OrderService);
   private clientService = inject(ClientService);
@@ -35,9 +36,16 @@ export class Dashboard implements OnInit {
 
   readonly isStaff = this.authService.isStaff;
 
+  readonly tabKeys = ['orders', 'clients', 'products'] as const;
+  activeRecentTab = signal<number>(0);
   activeTab = signal<'orders' | 'clients' | 'products'>('orders');
   screenWidth = signal<number>(window.innerWidth);
   isMobile = computed(() => this.screenWidth() < 768);
+
+  @ViewChild('activitiesTrack') activitiesTrack?: ElementRef<HTMLElement>;
+
+  private isProgrammaticScroll = false;
+  private scrollTimeout?: ReturnType<typeof setTimeout>;
 
   monthlyMetrics$!: Observable<{ sales: number; orders: number; newClients: number }>;
   globalMetrics$!: Observable<{
@@ -88,7 +96,56 @@ export class Dashboard implements OnInit {
     this.latestProducts$ = this.productService.getLatestProducts(10);
   }
 
+  ngOnDestroy(): void {
+    clearTimeout(this.scrollTimeout);
+  }
+
+  selectRecentTab(index: number): void {
+    const validIndex = Math.max(0, Math.min(index, this.tabKeys.length - 1));
+    this.activeRecentTab.set(validIndex);
+    this.activeTab.set(this.tabKeys[validIndex]);
+
+    const track = this.activitiesTrack?.nativeElement;
+    if (track) {
+      this.isProgrammaticScroll = true;
+      clearTimeout(this.scrollTimeout);
+      this.scrollTimeout = setTimeout(() => {
+        this.isProgrammaticScroll = false;
+      }, 400);
+
+      const slides = track.querySelectorAll<HTMLElement>('.activity-card-slide');
+      const targetSlide = slides[validIndex];
+      const targetLeft = targetSlide
+        ? targetSlide.offsetLeft - track.offsetLeft
+        : validIndex * track.clientWidth;
+      track.scrollTo({
+        left: targetLeft,
+        behavior: 'smooth',
+      });
+    }
+  }
+
   setTab(tab: 'orders' | 'clients' | 'products'): void {
-    this.activeTab.set(tab);
+    this.selectRecentTab(this.tabKeys.indexOf(tab));
+  }
+
+  onActivitiesScroll(): void {
+    if (this.isProgrammaticScroll) {
+      return;
+    }
+    const track = this.activitiesTrack?.nativeElement;
+    if (!track) {
+      return;
+    }
+
+    const clientWidth = track.clientWidth;
+    if (clientWidth > 0) {
+      const index = Math.round(track.scrollLeft / clientWidth);
+      const safeIndex = Math.max(0, Math.min(index, this.tabKeys.length - 1));
+      if (this.activeRecentTab() !== safeIndex) {
+        this.activeRecentTab.set(safeIndex);
+        this.activeTab.set(this.tabKeys[safeIndex]);
+      }
+    }
   }
 }
