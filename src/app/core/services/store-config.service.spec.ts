@@ -243,6 +243,8 @@ describe('StoreConfigService', () => {
         primary: '#111111',
         accent: '#222222',
         background: '#333333',
+        surface: '#ffffff',
+        text: '#444444',
       },
     } as unknown as StoreConfig);
 
@@ -250,7 +252,12 @@ describe('StoreConfigService', () => {
 
     expect(root.style.setProperty).toHaveBeenCalledWith('--color-primary', '#111111');
     expect(root.style.setProperty).toHaveBeenCalledWith('--color-accent', '#222222');
+    expect(root.style.setProperty).toHaveBeenCalledWith('--color-background', '#333333');
     expect(root.style.setProperty).toHaveBeenCalledWith('--shop-bg', '#333333');
+    expect(root.style.setProperty).toHaveBeenCalledWith('--color-surface', '#ffffff');
+    expect(root.style.setProperty).toHaveBeenCalledWith('--shop-surface', '#ffffff');
+    expect(root.style.setProperty).toHaveBeenCalledWith('--color-text', '#444444');
+    expect(root.style.setProperty).toHaveBeenCalledWith('--text-primary', '#444444');
   });
 
   it('should update meta description via effect when seo.metaDescription is set', () => {
