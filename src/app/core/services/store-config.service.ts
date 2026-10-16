@@ -75,6 +75,14 @@ export class StoreConfigService {
             root.style.setProperty('--color-background', config.colors.background);
             root.style.setProperty('--shop-bg', config.colors.background);
           }
+          if (config.colors.surface) {
+            root.style.setProperty('--color-surface', config.colors.surface);
+            root.style.setProperty('--shop-surface', config.colors.surface);
+          }
+          if (config.colors.text) {
+            root.style.setProperty('--color-text', config.colors.text);
+            root.style.setProperty('--text-primary', config.colors.text);
+          }
         }
 
         // 4. Font family
@@ -303,6 +311,14 @@ export class StoreConfigService {
       if (config.colors.background) {
         root.style.setProperty('--color-background', config.colors.background);
         root.style.setProperty('--shop-bg', config.colors.background);
+      }
+      if (config.colors.surface) {
+        root.style.setProperty('--color-surface', config.colors.surface);
+        root.style.setProperty('--shop-surface', config.colors.surface);
+      }
+      if (config.colors.text) {
+        root.style.setProperty('--color-text', config.colors.text);
+        root.style.setProperty('--text-primary', config.colors.text);
       }
     }
     root.style.setProperty('--font-family', 'Inter');
