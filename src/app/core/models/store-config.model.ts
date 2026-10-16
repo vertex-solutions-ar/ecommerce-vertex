@@ -134,6 +134,8 @@ export interface StoreConfig {
     primary: string;
     accent: string;
     background: string;
+    surface?: string;
+    text?: string;
   };
   payments: {
     mercadoPagoPublicKey: string;
