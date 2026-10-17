@@ -6,7 +6,7 @@ import { resolveTenantDb } from './core/tenant-db';
 import { singletonDoc } from './core/config';
 
 export const BOT_USER_AGENTS_REGEX =
-  /whatsapp|facebookexternalhit|twitterbot|telegrambot|linkedinbot|slackbot|discordbot/i;
+  /whatsapp|facebookexternalhit|facebot|twitterbot|telegrambot|linkedinbot|slackbot|discordbot/i;
 
 export const DEFAULT_STORE_ID = 'white-label-store';
 export const DEFAULT_STORE_NAME = 'Vertex Storefront';
@@ -433,3 +433,8 @@ export const storefrontSeo = onRequest(
     }
   },
 );
+
+/**
+ * Alias serveStoreMetadata para enrutamiento explícito o invocación como middleware SSR.
+ */
+export const serveStoreMetadata = storefrontSeo;

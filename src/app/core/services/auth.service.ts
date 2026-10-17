@@ -35,6 +35,7 @@ export class AuthService {
   private sweetAlertService = inject(SweetAlertService);
   private injector = inject(Injector);
   private refreshMyAdminClaim = httpsCallable(this.functions, 'refreshMyAdminClaim');
+  private syncUserRoleClaims = httpsCallable(this.functions, 'syncUserRoleClaims');
 
   currentUser$ = user(this.auth);
 
@@ -162,19 +163,26 @@ export class AuthService {
             // or if the user is logging into a new tenant.
             let granted = false;
             try {
-              const res = (await this.refreshMyAdminClaim({ tenantId: currentTenant })) as {
+              const res = (await this.syncUserRoleClaims({ tenantId: currentTenant })) as {
                 data?: { granted?: boolean };
               };
               granted = !!res?.data?.granted;
             } catch {
-              // If callable fails or throws error, user is not authorized
-              granted = false;
+              try {
+                const res = (await this.refreshMyAdminClaim({ tenantId: currentTenant })) as {
+                  data?: { granted?: boolean };
+                };
+                granted = !!res?.data?.granted;
+              } catch {
+                granted = false;
+              }
             }
 
             if (granted) {
-              // Custom claims were set by server — retry token refresh briefly.
+              // Custom claims were set by server — force token refresh with getIdToken(true)
+              await result.user.getIdToken(true);
               for (let i = 0; i < 3; i++) {
-                await new Promise((resolve) => setTimeout(resolve, 1000));
+                await new Promise((resolve) => setTimeout(resolve, 800));
                 tokenResult = await result.user.getIdTokenResult(true);
                 claimedTenantId = tokenResult.claims['tenantId'] as string | undefined;
                 if (tokenResult.claims['admin'] && claimedTenantId === currentTenant) {

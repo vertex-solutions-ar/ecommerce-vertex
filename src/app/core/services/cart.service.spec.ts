@@ -4,6 +4,7 @@ import { CartService } from './cart.service';
 import { SweetAlertService } from './sweet-alert.service';
 import { AttributeService } from './attribute.service';
 import { ProductService } from './product.service';
+import { StorageService } from './storage.service';
 import type { Product, ProductVariant } from '@core/models/product.model';
 import { environment } from '../../../environments/environment';
 
@@ -53,6 +54,14 @@ describe('CartService', () => {
         { provide: SweetAlertService, useValue: sweetAlertSpy },
         { provide: AttributeService, useValue: attributeServiceSpy },
         { provide: ProductService, useValue: productServiceSpy },
+        {
+          provide: StorageService,
+          useValue: {
+            getLocalStorageItem: (key: string) => localStorage.getItem(key),
+            setLocalStorageItem: (key: string, val: string) => localStorage.setItem(key, val),
+            removeLocalStorageItem: (key: string) => localStorage.removeItem(key),
+          },
+        },
       ],
     });
 
@@ -272,6 +281,14 @@ describe('CartService', () => {
           { provide: SweetAlertService, useValue: sweetAlertSpy },
           { provide: AttributeService, useValue: attributeServiceSpy },
           { provide: ProductService, useValue: productServiceSpy },
+          {
+            provide: StorageService,
+            useValue: {
+              getLocalStorageItem: (key: string) => localStorage.getItem(key),
+              setLocalStorageItem: (key: string, val: string) => localStorage.setItem(key, val),
+              removeLocalStorageItem: (key: string) => localStorage.removeItem(key),
+            },
+          },
         ],
       });
       const newService = TestBed.inject(CartService);
@@ -289,6 +306,14 @@ describe('CartService', () => {
           { provide: SweetAlertService, useValue: sweetAlertSpy },
           { provide: AttributeService, useValue: attributeServiceSpy },
           { provide: ProductService, useValue: productServiceSpy },
+          {
+            provide: StorageService,
+            useValue: {
+              getLocalStorageItem: (key: string) => localStorage.getItem(key),
+              setLocalStorageItem: (key: string, val: string) => localStorage.setItem(key, val),
+              removeLocalStorageItem: (key: string) => localStorage.removeItem(key),
+            },
+          },
         ],
       });
       const newService = TestBed.inject(CartService);
@@ -307,6 +332,14 @@ describe('CartService', () => {
           { provide: SweetAlertService, useValue: sweetAlertSpy },
           { provide: AttributeService, useValue: attributeServiceSpy },
           { provide: ProductService, useValue: productServiceSpy },
+          {
+            provide: StorageService,
+            useValue: {
+              getLocalStorageItem: (key: string) => localStorage.getItem(key),
+              setLocalStorageItem: (key: string, val: string) => localStorage.setItem(key, val),
+              removeLocalStorageItem: (key: string) => localStorage.removeItem(key),
+            },
+          },
         ],
       });
       const newService = TestBed.inject(CartService);
@@ -328,6 +361,14 @@ describe('CartService', () => {
           { provide: SweetAlertService, useValue: sweetAlertSpy },
           { provide: AttributeService, useValue: attributeServiceSpy },
           { provide: ProductService, useValue: productServiceSpy },
+          {
+            provide: StorageService,
+            useValue: {
+              getLocalStorageItem: (key: string) => localStorage.getItem(key),
+              setLocalStorageItem: (key: string, val: string) => localStorage.setItem(key, val),
+              removeLocalStorageItem: (key: string) => localStorage.removeItem(key),
+            },
+          },
         ],
       });
       const newService = TestBed.inject(CartService);
@@ -353,6 +394,14 @@ describe('CartService', () => {
           { provide: SweetAlertService, useValue: sweetAlertSpy },
           { provide: AttributeService, useValue: attributeServiceSpy },
           { provide: ProductService, useValue: productServiceSpy },
+          {
+            provide: StorageService,
+            useValue: {
+              getLocalStorageItem: (key: string) => localStorage.getItem(key),
+              setLocalStorageItem: (key: string, val: string) => localStorage.setItem(key, val),
+              removeLocalStorageItem: (key: string) => localStorage.removeItem(key),
+            },
+          },
         ],
       });
       const newService = TestBed.inject(CartService);
@@ -376,18 +425,32 @@ describe('CartService', () => {
   });
 
   describe('localStorage error handling extra', () => {
-    it('should handle error when localStorage.getItem throws', () => {
+    it('should handle error when storageService.getLocalStorageItem throws or returns malformed data', () => {
       spyOn(console, 'error');
-      spyOn(localStorage, 'getItem').and.callFake(() => {
-        throw new Error('SecurityError');
-      });
-      const spyRemove = spyOn(localStorage, 'removeItem');
+      const mockStorage = {
+        getLocalStorageItem: jasmine.createSpy('getLocalStorageItem').and.callFake(() => {
+          throw new Error('SecurityError');
+        }),
+        setLocalStorageItem: jasmine.createSpy('setLocalStorageItem'),
+        removeLocalStorageItem: jasmine.createSpy('removeLocalStorageItem'),
+      };
 
-      TestBed.runInInjectionContext(() => {
-        const newService = new CartService();
-        expect(newService.cart().items).toEqual([]);
-        expect(spyRemove).toHaveBeenCalledWith(`cart_${environment.tenantId}`);
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          CartService,
+          { provide: SweetAlertService, useValue: sweetAlertSpy },
+          { provide: AttributeService, useValue: attributeServiceSpy },
+          { provide: ProductService, useValue: productServiceSpy },
+          { provide: StorageService, useValue: mockStorage },
+        ],
       });
+
+      const newService = TestBed.inject(CartService);
+      expect(newService.cart().items).toEqual([]);
+      expect(mockStorage.removeLocalStorageItem).toHaveBeenCalledWith(
+        `cart_${environment.tenantId}`,
+      );
     });
   });
 
