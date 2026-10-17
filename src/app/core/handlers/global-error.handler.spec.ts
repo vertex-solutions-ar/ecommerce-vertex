@@ -70,4 +70,15 @@ describe('GlobalErrorHandler', () => {
       jasmine.any(Error),
     );
   });
+
+  it('should handle sessionStorage throwing errors when handling deployment reload', fakeAsync(() => {
+    spyOn(sessionStorage, 'getItem').and.throwError(new Error('SecurityError'));
+    spyOn(sessionStorage, 'setItem').and.throwError(new Error('SecurityError'));
+
+    const chunkError = new Error('Failed to fetch dynamically imported module');
+    expect(() => handler.handleError(chunkError)).not.toThrow();
+
+    tick(1500);
+    expect(handler.reloadLocation).toHaveBeenCalled();
+  }));
 });
