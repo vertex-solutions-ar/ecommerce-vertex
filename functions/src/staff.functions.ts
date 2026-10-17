@@ -167,8 +167,11 @@ export const upsertAdminStaff = onCall({ cors: true, invoker: 'public' }, async 
 
   await roleRef.set(
     {
+      email,
       role,
       tenantId,
+      storeId: tenantId,
+      status: 'active',
       source: 'store-admin-panel',
       updatedAt: now,
       createdAt: existing.exists ? existing.get('createdAt') || now : now,
