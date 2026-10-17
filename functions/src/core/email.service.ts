@@ -9,6 +9,7 @@ export interface SendEmailOptions {
   text?: string;
   from?: string;
   replyTo?: string;
+  headers?: Record<string, string>;
 }
 
 /**
@@ -135,6 +136,10 @@ export async function sendEmail(
       options.from || defaultFrom || `"Vertex" <${user}>`;
     const textBody = (options.text || '').trim() || htmlToText(options.html);
 
+    const recipientStr = Array.isArray(options.to) ? options.to.join(', ') : options.to;
+    const cleanTo = recipientStr.replace(/[^a-zA-Z0-9@._-]/g, '');
+    const unsubscribeEmail = process.env.SMTP_FROM || user;
+
     const mailPayload: nodemailer.SendMailOptions = {
       from: fromAddress,
       to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
@@ -143,11 +148,18 @@ export async function sendEmail(
       text: textBody,
       headers: {
         // Cabecera estándar para correos transaccionales (evita auto-respuestas de Exchange).
-        'X-Auto-Response-Suppress': 'All',
+        'X-Auto-Response-Suppress': 'OOF, AutoReply',
         // Indica que es un correo automático legítimo evitando bucles y reduciendo spam score
         'Auto-Submitted': 'auto-generated',
+        // Precedence estándar para correos de plataforma
+        Precedence: 'bulk',
+        // Desuscriptión estándar RFC 2369
+        'List-Unsubscribe': `<mailto:${unsubscribeEmail}?subject=unsubscribe>`,
+        // Identificador de entidad para reputación de transporte
+        'X-Entity-Ref-ID': `vtx-${cleanTo}-${Date.now()}`,
         // Canal oficial de reporte de abuso
-        'X-Report-Abuse': 'mailto:vertex.tech.dev@gmail.com',
+        'X-Report-Abuse': `mailto:${user}`,
+        ...(options.headers || {}),
       },
     };
     if (options.replyTo && String(options.replyTo).trim()) {
