@@ -4,7 +4,7 @@
   "description": "Cloud Functions for Firebase",
   "scripts": {
     "lint": "eslint . --ext .js,.ts",
-    "build": "tsc && node -e \"const fs=require('fs'); const p='../dist/ecommerce-vertex/browser/index.html'; if(fs.existsSync(p)){fs.copyFileSync(p, 'lib/index.html'); console.log('[Build] index.html copiado a functions/lib');}\"",
+    "build": "tsc && node -e \"const fs=require('fs'); const appP='../dist/ecommerce-vertex/browser/app.html'; const idxP='../dist/ecommerce-vertex/browser/index.html'; const p = fs.existsSync(appP) ? appP : idxP; if(fs.existsSync(p)){fs.copyFileSync(p, 'lib/app.html'); fs.copyFileSync(p, 'lib/index.html'); console.log('[Build] app.html/index.html copiado a functions/lib');}\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "serve": "npm run build && firebase emulators:start --only functions",
