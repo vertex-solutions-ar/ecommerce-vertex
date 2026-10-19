@@ -169,6 +169,11 @@ export interface StoreConfig {
   emailSenderName?: string;
   emailSignature?: string;
 
+  // Redes Sociales & Open Graph (WhatsApp, Facebook, Twitter)
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImageUrl?: string;
+
   // Legacy compatibility fields
   contactPhone?: string;
   contactEmail?: string;

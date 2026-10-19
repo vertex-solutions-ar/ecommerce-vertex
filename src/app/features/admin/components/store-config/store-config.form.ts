@@ -29,5 +29,8 @@ export function createStoreConfigForm(fb: FormBuilder): FormGroup {
     notificationEmail: [''],
     emailSenderName: [''],
     emailSignature: [''],
+    ogTitle: [''],
+    ogDescription: [''],
+    ogImageUrl: [''],
   });
 }
