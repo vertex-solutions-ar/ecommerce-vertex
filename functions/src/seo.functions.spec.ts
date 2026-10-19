@@ -39,10 +39,8 @@ import {
   stripSocialMetaTags,
   isSvgUrl,
   normalizeToAbsoluteHttps,
+  inferStoreNameFromSlug,
   storefrontSeo,
-  DEFAULT_STORE_NAME,
-  DEFAULT_META_DESCRIPTION,
-  DEFAULT_IMAGE_URL,
 } from './seo.functions';
 
 describe('SEO Cloud Functions', () => {
@@ -536,7 +534,7 @@ describe('SEO Cloud Functions', () => {
       expect(responseStatus).toBe(200);
       expect(responseHeaders['vary']).toBe('User-Agent');
       expect(responseBody).toContain(
-        `<meta property="og:image" content="${DEFAULT_IMAGE_URL}" />`,
+        '<meta property="og:image" content="https://tienda-all-svg.web.app/assets/images/og-preview.png" />',
       );
       expect(responseBody).not.toContain('brand.svg');
       expect(responseBody).not.toContain('hero.svg');
@@ -583,7 +581,19 @@ describe('SEO Cloud Functions', () => {
       );
     });
 
-    it('should fallback gracefully to defaults when Firestore document does not exist', async () => {
+  describe('inferStoreNameFromSlug', () => {
+    it('should infer readable names from slugs and subdomains', () => {
+      expect(inferStoreNameFromSlug('vtx-c-b-market')).toBe('C B Market');
+      expect(inferStoreNameFromSlug('vtx-sd-1ddrnny6')).toBe('1ddrnny6');
+      expect(inferStoreNameFromSlug('diente-de-leon')).toBe('Diente De Leon');
+      expect(inferStoreNameFromSlug('tienda-a-vtx')).toBe('Tienda A');
+      expect(inferStoreNameFromSlug('')).toBe('');
+      expect(inferStoreNameFromSlug('ecommerce-vertex')).toBe('');
+      expect(inferStoreNameFromSlug('white-label-store')).toBe('');
+    });
+  });
+
+    it('should fallback gracefully to inferred store name or defaults when Firestore document does not exist', async () => {
       mockReq = {
         headers: {
           'user-agent': 'facebookexternalhit/1.1',
@@ -607,13 +617,13 @@ describe('SEO Cloud Functions', () => {
         'public, max-age=300, s-maxage=600',
       );
       expect(responseBody).toContain(
-        `<meta property="og:title" content="${DEFAULT_STORE_NAME}" />`,
+        '<meta property="og:title" content="Tienda Inexistente" />',
       );
       expect(responseBody).toContain(
-        `<meta property="og:description" content="${DEFAULT_META_DESCRIPTION}" />`,
+        'Descubre nuestros productos y promociones exclusivas con envíos rápidos en Tienda Inexistente.',
       );
       expect(responseBody).toContain(
-        `<meta property="og:image" content="${DEFAULT_IMAGE_URL}" />`,
+        '<meta property="og:image" content="https://tienda-inexistente.web.app/assets/images/og-preview.png" />',
       );
     });
 
@@ -637,7 +647,7 @@ describe('SEO Cloud Functions', () => {
         'public, max-age=300, s-maxage=600',
       );
       expect(responseBody).toContain(
-        `<meta property="og:title" content="${DEFAULT_STORE_NAME}" />`,
+        '<meta property="og:title" content="Tienda Error" />',
       );
     });
 
