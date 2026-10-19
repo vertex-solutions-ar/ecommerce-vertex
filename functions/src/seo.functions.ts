@@ -230,10 +230,41 @@ const DEFAULT_BASE_HTML = `<!doctype html>
   </body>
 </html>`;
 
+/**
+ * Infers a human-readable store brand name from a slug or subdomain.
+ * e.g., "vtx-c-b-market" -> "C B Market", "diente-de-leon" -> "Diente De Leon".
+ */
+export function inferStoreNameFromSlug(rawSlug?: string): string {
+  if (!rawSlug || typeof rawSlug !== 'string') return '';
+  let clean = rawSlug.trim().toLowerCase();
+
+  // Strip technical prefixes/suffixes if present
+  if (clean.startsWith('vtx-sd-') && clean.length > 7) {
+    clean = clean.substring(7);
+  } else if (clean.startsWith('vtx-') && clean.length > 4) {
+    clean = clean.substring(4);
+  }
+  if (clean.endsWith('-vtx') && clean.length > 4) {
+    clean = clean.slice(0, -4);
+  }
+
+  if (!clean || clean === DEFAULT_STORE_ID || clean === 'ecommerce-vertex' || clean === 'ecommerce-vertex-dev') {
+    return '';
+  }
+
+  // Split by hyphens/underscores, capitalize words
+  return clean
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 let cachedBaseHtml: string | null = null;
 
 /**
  * Loads base HTML template, attempting to read from disk if available, or using fallback.
+ * Prioritizes app.html (created after Angular compilation) over index.html.
  */
 export function getBaseHtml(): string {
   if (cachedBaseHtml) {
@@ -241,9 +272,13 @@ export function getBaseHtml(): string {
   }
 
   const candidatePaths = [
+    path.join(__dirname, 'app.html'),
     path.join(__dirname, 'index.html'),
+    path.join(__dirname, '../public/app.html'),
     path.join(__dirname, '../public/index.html'),
+    path.join(__dirname, '../../dist/ecommerce-vertex/browser/app.html'),
     path.join(__dirname, '../../dist/ecommerce-vertex/browser/index.html'),
+    path.join(process.cwd(), 'dist/ecommerce-vertex/browser/app.html'),
     path.join(process.cwd(), 'dist/ecommerce-vertex/browser/index.html'),
     path.join(process.cwd(), 'src/index.html'),
   ];
@@ -352,54 +387,90 @@ export const storefrontSeo = onRequest({ cors: true, invoker: 'public' }, async 
     const protocol = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
     const fullUrl = `${protocol}://${host}${req.originalUrl || req.url || '/'}`;
 
-    let storeName = DEFAULT_STORE_NAME;
-    let description = DEFAULT_META_DESCRIPTION;
-    let imageUrl = normalizeToAbsoluteHttps(DEFAULT_IMAGE_URL, host);
+    // Smart fallback inferred from host/slug
+    const rawHostOrSlug = (req.headers['x-forwarded-host'] as string)?.split(',')[0]?.split('.')[0] || req.hostname?.split('.')[0] || storeId;
+    const inferredName = inferStoreNameFromSlug(rawHostOrSlug) || inferStoreNameFromSlug(storeId);
+
+    const defaultTitle = inferredName ? inferredName : DEFAULT_STORE_NAME;
+    const defaultDescription = inferredName
+      ? `Descubre nuestros productos y promociones exclusivas con envíos rápidos en ${inferredName}.`
+      : 'Descubre nuestros productos y promociones exclusivas con envíos rápidos.';
+    const defaultImage = normalizeToAbsoluteHttps('/assets/images/og-preview.png', host);
+
+    let storeName = defaultTitle;
+    let description = defaultDescription;
+    let imageUrl = defaultImage;
 
     try {
       const db = resolveTenantDb();
-      const storeDocRef = db.doc(singletonDoc(storeId, 'configuracion', 'store'));
-      let snap = await storeDocRef.get();
+      // Try 1: configuracion/store_{storeId}
+      let snap = await db.doc(singletonDoc(storeId, 'configuracion', 'store')).get();
 
-      // Fallback to white-label-store if custom tenant document doesn't exist
-      if (!snap.exists && storeId !== DEFAULT_STORE_ID) {
+      // Try 2: stores collection by document ID (e.g., stores/c-b or stores/vtx-c-b-market)
+      let storeDocData: Record<string, any> | undefined;
+      if (!snap.exists) {
+        try {
+          const storeDirectSnap = await db.collection('stores').doc(storeId).get();
+          if (storeDirectSnap.exists) {
+            storeDocData = storeDirectSnap.data();
+          } else {
+            // Also check stores where slug == storeId or siteId == storeId
+            const storesBySlug = await db.collection('stores').where('slug', '==', storeId).limit(1).get();
+            if (!storesBySlug.empty) {
+              storeDocData = storesBySlug.docs[0].data();
+            }
+          }
+        } catch {
+          // Ignore secondary query error
+        }
+      }
+
+      // Try 3: Fallback to white-label-store if neither exists
+      if (!snap.exists && !storeDocData && storeId !== DEFAULT_STORE_ID) {
         snap = await db.doc(singletonDoc(DEFAULT_STORE_ID, 'configuracion', 'store')).get();
       }
 
-      if (snap.exists) {
-        const data = snap.data() || {};
-        const rawName = data['ogTitle'] || data['storeName'] || data['name'];
-        storeName =
-          typeof rawName === 'string' && rawName.trim() ? rawName.trim() : DEFAULT_STORE_NAME;
+      const data = (snap.exists ? snap.data() : storeDocData) || {};
 
-        const rawDesc =
-          data['ogDescription'] ||
-          data['tagline'] ||
-          data['seo']?.['metaDescription'] ||
-          data['metaDescription'] ||
-          data['description'];
-        description =
-          typeof rawDesc === 'string' && rawDesc.trim() ? rawDesc.trim() : DEFAULT_META_DESCRIPTION;
-
-        // Priority: ogImageUrl -> logoUrl -> bannerUrl -> DEFAULT_IMAGE_URL (rejecting SVGs)
-        const rawOgImage = typeof data['ogImageUrl'] === 'string' ? data['ogImageUrl'].trim() : '';
-        const rawLogo = typeof data['logoUrl'] === 'string' ? data['logoUrl'].trim() : '';
-        const rawBanner = typeof data['bannerUrl'] === 'string' ? data['bannerUrl'].trim() : '';
-
-        const selectedImage =
-          rawOgImage && !isSvgUrl(rawOgImage)
-            ? rawOgImage
-            : rawLogo && !isSvgUrl(rawLogo)
-              ? rawLogo
-              : rawBanner && !isSvgUrl(rawBanner)
-                ? rawBanner
-                : DEFAULT_IMAGE_URL;
-
-        imageUrl = normalizeToAbsoluteHttps(selectedImage, host);
+      const rawTitle = data['ogTitle'] || data['storeName'] || data['name'];
+      if (typeof rawTitle === 'string' && rawTitle.trim()) {
+        storeName = rawTitle.trim();
+      } else if (inferredName) {
+        storeName = inferredName;
+      } else {
+        storeName = 'Tienda Online';
       }
+
+      const rawDesc =
+        data['ogDescription'] ||
+        data['tagline'] ||
+        data['seo']?.['metaDescription'] ||
+        data['metaDescription'] ||
+        data['description'];
+      if (typeof rawDesc === 'string' && rawDesc.trim()) {
+        description = rawDesc.trim();
+      } else {
+        description = defaultDescription;
+      }
+
+      // Priority: ogImageUrl -> logoUrl -> bannerUrl -> defaultImage (rejecting SVGs)
+      const rawOgImage = typeof data['ogImageUrl'] === 'string' ? data['ogImageUrl'].trim() : '';
+      const rawLogo = typeof data['logoUrl'] === 'string' ? data['logoUrl'].trim() : '';
+      const rawBanner = typeof data['bannerUrl'] === 'string' ? data['bannerUrl'].trim() : '';
+
+      const selectedImage =
+        rawOgImage && !isSvgUrl(rawOgImage)
+          ? rawOgImage
+          : rawLogo && !isSvgUrl(rawLogo)
+            ? rawLogo
+            : rawBanner && !isSvgUrl(rawBanner)
+              ? rawBanner
+              : defaultImage;
+
+      imageUrl = normalizeToAbsoluteHttps(selectedImage, host);
     } catch (dbErr) {
       logger.warn(`[storefrontSeo] Error fetching store config for tenant "${storeId}":`, dbErr);
-      // Retain default values defensively
+      // Retain defensive fallback values
     }
 
     const injectedHtml = injectSeoTags(baseHtml, {
