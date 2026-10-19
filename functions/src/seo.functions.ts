@@ -264,7 +264,6 @@ let cachedBaseHtml: string | null = null;
 
 /**
  * Loads base HTML template, attempting to read from disk if available, or using fallback.
- * Prioritizes app.html (created after Angular compilation) over index.html.
  */
 export function getBaseHtml(): string {
   if (cachedBaseHtml) {
@@ -272,14 +271,14 @@ export function getBaseHtml(): string {
   }
 
   const candidatePaths = [
-    path.join(__dirname, 'app.html'),
     path.join(__dirname, 'index.html'),
-    path.join(__dirname, '../public/app.html'),
+    path.join(__dirname, 'app.html'),
     path.join(__dirname, '../public/index.html'),
-    path.join(__dirname, '../../dist/ecommerce-vertex/browser/app.html'),
+    path.join(__dirname, '../public/app.html'),
     path.join(__dirname, '../../dist/ecommerce-vertex/browser/index.html'),
-    path.join(process.cwd(), 'dist/ecommerce-vertex/browser/app.html'),
+    path.join(__dirname, '../../dist/ecommerce-vertex/browser/app.html'),
     path.join(process.cwd(), 'dist/ecommerce-vertex/browser/index.html'),
+    path.join(process.cwd(), 'dist/ecommerce-vertex/browser/app.html'),
     path.join(process.cwd(), 'src/index.html'),
   ];
 

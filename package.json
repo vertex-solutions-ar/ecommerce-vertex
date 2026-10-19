@@ -1,11 +1,11 @@
 {
   "name": "ecommerce-vertex",
-  "version": "0.9.7",
+  "version": "0.9.8",
   "scripts": {
     "setup": "tsx scripts/setup.ts",
     "setup:credentials": "tsx scripts/setup-credentials.ts",
     "start": "ng serve --port 4201",
-    "build": "ng build --configuration production && node -e \"const fs=require('fs'); const src='dist/ecommerce-vertex/browser/index.html'; const dst='dist/ecommerce-vertex/browser/app.html'; if(fs.existsSync(src)){fs.renameSync(src, dst); console.log('[Build] Renamed index.html to app.html');}\"",
+    "build": "ng build --configuration production",
     "test": "ng test --watch=false --code-coverage",
     "fix": "eslint src --fix && prettier --write \"src/**/*.{ts,html,scss}\"",
     "qa": "tsx scripts/qa.ts",
@@ -31,7 +31,7 @@
     "pretypecheck": "npm --prefix ./packages/shared-contracts run build --if-present",
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.spec.json --noEmit",
     "build:dev": "ng build --configuration development",
-    "build:dev-template": "ng build --configuration dev-template --optimization --no-source-map && node -e \"const fs=require('fs'); const src='dist/ecommerce-vertex/browser/index.html'; const dst='dist/ecommerce-vertex/browser/app.html'; if(fs.existsSync(src)){fs.renameSync(src, dst); console.log('[Build] Renamed index.html to app.html');}\"",
+    "build:dev-template": "ng build --configuration dev-template --optimization --no-source-map",
     "build:fn": "npm --prefix functions run build",
     "postinstall": "node scripts/postinstall.js"
   },
