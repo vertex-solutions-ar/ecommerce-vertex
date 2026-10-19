@@ -365,20 +365,10 @@ export const storefrontSeo = onRequest({ cors: true, invoker: 'public' }, async 
     // Anti-cache poisoning: vary responses by User-Agent for intermediate proxies and CDN
     res.setHeader('Vary', 'User-Agent');
 
-    const userAgent = (req.headers['user-agent'] as string) || '';
-    const isBot = isCrawlerBot(userAgent);
-
+    // Load base app.html (or fallback template)
     const baseHtml = getBaseHtml();
 
-    // Normal browser flow: dispatch regular HTML
-    if (!isBot) {
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.status(200).send(baseHtml);
-      return;
-    }
-
-    // Crawler / Bot flow: resolve store and inject custom OG tags
+    // Universal SSR flow: resolve store and inject custom OG / HTML tags for ALL requests (human browsers and bots alike)
     const storeId = resolveStoreIdFromRequest(req);
     const host =
       (req.headers['x-forwarded-host'] as string)?.split(',')[0]?.trim() ||
@@ -388,13 +378,16 @@ export const storefrontSeo = onRequest({ cors: true, invoker: 'public' }, async 
     const fullUrl = `${protocol}://${host}${req.originalUrl || req.url || '/'}`;
 
     // Smart fallback inferred from host/slug
-    const rawHostOrSlug = (req.headers['x-forwarded-host'] as string)?.split(',')[0]?.split('.')[0] || req.hostname?.split('.')[0] || storeId;
+    const rawHostOrSlug =
+      (req.headers['x-forwarded-host'] as string)?.split(',')[0]?.split('.')[0] ||
+      req.hostname?.split('.')[0] ||
+      storeId;
     const inferredName = inferStoreNameFromSlug(rawHostOrSlug) || inferStoreNameFromSlug(storeId);
 
     const defaultTitle = inferredName ? inferredName : DEFAULT_STORE_NAME;
     const defaultDescription = inferredName
-      ? `Descubre nuestros productos y promociones exclusivas con envíos rápidos en ${inferredName}.`
-      : 'Descubre nuestros productos y promociones exclusivas con envíos rápidos.';
+      ? `Descubre nuestros productos y novedades con envíos a todo el país en ${inferredName}.`
+      : 'Descubre nuestros productos y novedades con envíos a todo el país.';
     const defaultImage = normalizeToAbsoluteHttps('/assets/images/og-preview.png', host);
 
     let storeName = defaultTitle;
@@ -453,7 +446,7 @@ export const storefrontSeo = onRequest({ cors: true, invoker: 'public' }, async 
         description = defaultDescription;
       }
 
-      // Priority: ogImageUrl -> logoUrl -> bannerUrl -> defaultImage (rejecting SVGs)
+      // Priority: ogImageUrl -> bannerUrl -> logoUrl -> defaultImage (rejecting SVGs)
       const rawOgImage = typeof data['ogImageUrl'] === 'string' ? data['ogImageUrl'].trim() : '';
       const rawLogo = typeof data['logoUrl'] === 'string' ? data['logoUrl'].trim() : '';
       const rawBanner = typeof data['bannerUrl'] === 'string' ? data['bannerUrl'].trim() : '';
@@ -461,10 +454,10 @@ export const storefrontSeo = onRequest({ cors: true, invoker: 'public' }, async 
       const selectedImage =
         rawOgImage && !isSvgUrl(rawOgImage)
           ? rawOgImage
-          : rawLogo && !isSvgUrl(rawLogo)
-            ? rawLogo
-            : rawBanner && !isSvgUrl(rawBanner)
-              ? rawBanner
+          : rawBanner && !isSvgUrl(rawBanner)
+            ? rawBanner
+            : rawLogo && !isSvgUrl(rawLogo)
+              ? rawLogo
               : defaultImage;
 
       imageUrl = normalizeToAbsoluteHttps(selectedImage, host);
@@ -481,7 +474,7 @@ export const storefrontSeo = onRequest({ cors: true, invoker: 'public' }, async 
     });
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=600');
+    res.setHeader('Cache-Control', 'public, max-age=180, s-maxage=300');
     res.status(200).send(injectedHtml);
   } catch (err) {
     logger.error('[storefrontSeo] Unexpected error in SEO handler:', err);
