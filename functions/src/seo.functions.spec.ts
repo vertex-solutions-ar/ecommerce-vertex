@@ -416,7 +416,7 @@ describe('SEO Cloud Functions', () => {
       };
     });
 
-    it('should return regular HTML with no-cache headers when request is NOT from a bot', async () => {
+    it('should inject custom metadata and return 200 with cache-control headers for all requests including regular browsers', async () => {
       mockReq = {
         headers: {
           'user-agent':
@@ -427,16 +427,23 @@ describe('SEO Cloud Functions', () => {
         originalUrl: '/',
       };
 
+      mockDocGet.mockResolvedValueOnce({
+        exists: true,
+        data: () => ({ storeName: 'Tienda Test Browser' }),
+      });
+
       await (storefrontSeo as any)(mockReq, mockRes);
 
       expect(responseStatus).toBe(200);
       expect(responseHeaders['vary']).toBe('User-Agent');
       expect(responseHeaders['content-type']).toBe('text/html; charset=utf-8');
       expect(responseHeaders['cache-control']).toBe(
-        'no-cache, no-store, must-revalidate',
+        'public, max-age=180, s-maxage=300',
       );
       expect(responseBody).toContain('<app-root>');
-      expect(mockDbDoc).not.toHaveBeenCalled();
+      expect(responseBody).toContain(
+        '<meta property="og:title" content="Tienda Test Browser" />',
+      );
     });
 
     it('should query Firestore and inject custom OG metadata for WhatsApp bot', async () => {
@@ -465,7 +472,7 @@ describe('SEO Cloud Functions', () => {
       expect(mockDbDoc).toHaveBeenCalledWith('configuracion/store_libreria-central');
       expect(responseHeaders['vary']).toBe('User-Agent');
       expect(responseHeaders['cache-control']).toBe(
-        'public, max-age=300, s-maxage=600',
+        'public, max-age=180, s-maxage=300',
       );
       expect(responseBody).toContain('<meta property="og:title" content="Librería Central" />');
       expect(responseBody).toContain(
@@ -540,7 +547,7 @@ describe('SEO Cloud Functions', () => {
       expect(responseBody).not.toContain('hero.svg');
     });
 
-    it('should include Vary: User-Agent header for both bot and regular human requests (anti-poisoning)', async () => {
+    it('should inject custom metadata and cache-control headers for both human browsers and crawlers (unified SSR)', async () => {
       // 1. Human browser request
       mockReq = {
         headers: {
@@ -552,11 +559,17 @@ describe('SEO Cloud Functions', () => {
         originalUrl: '/',
       };
 
+      mockDocGet.mockResolvedValueOnce({
+        exists: true,
+        data: () => ({ storeName: 'Human Store' }),
+      });
+
       await (storefrontSeo as any)(mockReq, mockRes);
       expect(responseHeaders['vary']).toBe('User-Agent');
       expect(responseHeaders['cache-control']).toBe(
-        'no-cache, no-store, must-revalidate',
+        'public, max-age=180, s-maxage=300',
       );
+      expect(responseBody).toContain('<meta property="og:title" content="Human Store" />');
 
       // 2. Bot request
       responseHeaders = {};
@@ -577,8 +590,9 @@ describe('SEO Cloud Functions', () => {
       await (storefrontSeo as any)(mockReq, mockRes);
       expect(responseHeaders['vary']).toBe('User-Agent');
       expect(responseHeaders['cache-control']).toBe(
-        'public, max-age=300, s-maxage=600',
+        'public, max-age=180, s-maxage=300',
       );
+      expect(responseBody).toContain('<meta property="og:title" content="Bot Store" />');
     });
 
   describe('inferStoreNameFromSlug', () => {
@@ -614,13 +628,13 @@ describe('SEO Cloud Functions', () => {
       expect(responseStatus).toBe(200);
       expect(responseHeaders['vary']).toBe('User-Agent');
       expect(responseHeaders['cache-control']).toBe(
-        'public, max-age=300, s-maxage=600',
+        'public, max-age=180, s-maxage=300',
       );
       expect(responseBody).toContain(
         '<meta property="og:title" content="Tienda Inexistente" />',
       );
       expect(responseBody).toContain(
-        'Descubre nuestros productos y promociones exclusivas con envíos rápidos en Tienda Inexistente.',
+        'Descubre nuestros productos y novedades con envíos a todo el país en Tienda Inexistente.',
       );
       expect(responseBody).toContain(
         '<meta property="og:image" content="https://tienda-inexistente.web.app/assets/images/og-preview.png" />',
@@ -644,7 +658,7 @@ describe('SEO Cloud Functions', () => {
       expect(responseStatus).toBe(200);
       expect(responseHeaders['vary']).toBe('User-Agent');
       expect(responseHeaders['cache-control']).toBe(
-        'public, max-age=300, s-maxage=600',
+        'public, max-age=180, s-maxage=300',
       );
       expect(responseBody).toContain(
         '<meta property="og:title" content="Tienda Error" />',
