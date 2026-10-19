@@ -116,6 +116,9 @@ export class Login implements OnInit, OnDestroy {
           } else if (msg.includes('auth/unauthorized-domain')) {
             this.authErrorMessage =
               'Este dominio no está autorizado para Google OAuth en Firebase Auth de esta tienda. Agregalo en Authentication > Settings > Authorized domains e intentá de nuevo.';
+          } else if (msg.includes('auth/operation-not-allowed')) {
+            this.authErrorMessage =
+              'El inicio de sesión con Google no está habilitado en este proyecto. Habilítalo en Firebase Auth > Sign-in method.';
           } else if (msg.includes('auth/invalid-continue-uri')) {
             this.authErrorMessage =
               'La URL de continuación no es válida para esta tienda. Verifica la configuración de Firebase Auth.';

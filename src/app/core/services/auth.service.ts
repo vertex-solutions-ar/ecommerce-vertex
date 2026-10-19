@@ -220,7 +220,8 @@ export class AuthService {
             code.includes('auth/popup-closed-by-user') ||
             code.includes('auth/unauthorized-domain') ||
             code.includes('auth/redirect-uri-mismatch') ||
-            code.includes('redirect_uri_mismatch')
+            code.includes('redirect_uri_mismatch') ||
+            code.includes('auth/operation-not-allowed')
           ) {
             throw new Error(code);
           }

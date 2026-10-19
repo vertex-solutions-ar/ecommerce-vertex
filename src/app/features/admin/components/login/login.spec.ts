@@ -210,6 +210,17 @@ describe('Login', () => {
     expect(component.isGoogleSubmitting).toBeFalse();
   });
 
+  it('should set operation-not-allowed error message', () => {
+    authServiceSpy.loginWithGoogle.and.returnValue(
+      throwError(() => new Error('auth/operation-not-allowed')),
+    );
+
+    component.onGoogleLogin();
+
+    expect(component.authErrorMessage).toContain('no está habilitado en este proyecto');
+    expect(component.isGoogleSubmitting).toBeFalse();
+  });
+
   it('should set invalid-continue-uri error message', () => {
     authServiceSpy.loginWithGoogle.and.returnValue(
       throwError(() => new Error('auth/invalid-continue-uri')),
