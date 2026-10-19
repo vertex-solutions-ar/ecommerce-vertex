@@ -1,12 +1,12 @@
 {
-  "version": "0.9.7",
-  "commitSha": "a17f381",
-  "timestamp": "2026-10-19T17:52:43.215Z",
+  "version": "0.9.8",
+  "commitSha": "75475eb",
+  "timestamp": "2026-10-19T21:56:38.728Z",
   "env": "production",
   "deployNumber": 1,
   "redeployNumber": 0,
   "isRedeploy": false,
-  "deployTimestamp": "2026-10-19T17:52:43.215Z",
+  "deployTimestamp": "2026-10-19T21:56:38.728Z",
   "sourceKind": "release",
   "sourceRef": "",
   "tenantId": "store"
