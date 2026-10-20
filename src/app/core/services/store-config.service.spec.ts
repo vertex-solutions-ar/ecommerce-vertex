@@ -369,4 +369,47 @@ describe('StoreConfigService', () => {
       content: 'Mi Tienda Especial',
     });
   });
+
+  it('should prioritize ogTitle, ogDescription, and ogImageUrl in updateSeoTags', () => {
+    const metaService = TestBed.inject(Meta);
+    spyOn(metaService, 'updateTag');
+
+    service.updateSeoTags({
+      storeName: 'Mi Tienda Base',
+      ogTitle: 'Título Open Graph Personalizado',
+      tagline: 'Tagline Base',
+      ogDescription: 'Descripción persuasiva para WhatsApp y Facebook',
+      logoUrl: 'https://logo.png',
+      ogImageUrl: 'https://custom-og-image.png',
+    } as unknown as StoreConfig);
+
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      name: 'description',
+      content: 'Descripción persuasiva para WhatsApp y Facebook',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      property: 'og:site_name',
+      content: 'Título Open Graph Personalizado',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      property: 'og:title',
+      content: 'Título Open Graph Personalizado',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      property: 'og:description',
+      content: 'Descripción persuasiva para WhatsApp y Facebook',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      property: 'og:image',
+      content: 'https://custom-og-image.png',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      name: 'twitter:title',
+      content: 'Título Open Graph Personalizado',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      name: 'twitter:image',
+      content: 'https://custom-og-image.png',
+    });
+  });
 });

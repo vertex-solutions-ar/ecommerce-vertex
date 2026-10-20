@@ -16,6 +16,9 @@ import { CartService } from '@core/services/cart.service';
 import { AttributeService } from '@core/services/attribute.service';
 import type { Attribute } from '@core/models/attribute.model';
 
+import { SeoService } from '@core/services/seo.service';
+import { StoreConfigService } from '@core/services/store-config.service';
+
 interface AttributeSelection {
   id: string;
   name: string;
@@ -37,6 +40,8 @@ export class Product {
   private productService = inject(ProductService);
   private cartService = inject(CartService);
   private attributeService = inject(AttributeService);
+  private seoService = inject(SeoService);
+  private storeConfigService = inject(StoreConfigService);
   private destroyRef = inject(DestroyRef);
 
   product = signal<ProductModel | undefined>(undefined);
@@ -138,6 +143,28 @@ export class Product {
             this.mainImage.set(product.image);
             this.galleryImages.set([product.image, ...(product.images ?? [])]);
             this.initializeAttributes();
+
+            const storeName = this.storeConfigService.storeName();
+            const productTitle = storeName ? `${product.name} | ${storeName}` : product.name;
+            const productDesc =
+              product.description || `Comprá ${product.name} al mejor precio en ${storeName}.`;
+            const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+
+            this.seoService.setTitle(productTitle);
+            this.seoService.setMetaDescription(productDesc);
+            this.seoService.setOpenGraphTags({
+              title: productTitle,
+              description: productDesc,
+              image: product.image,
+              url: currentUrl,
+              type: 'product',
+            });
+            this.seoService.setTwitterTags({
+              card: 'summary_large_image',
+              title: productTitle,
+              description: productDesc,
+              image: product.image,
+            });
           }
         }
       });
