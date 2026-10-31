@@ -89,14 +89,20 @@ export function resolveTenantId(locationOverride?: { hostname: string; search: s
   }
 
   // Priority 3.5: localStorage persistence and fallback
-  if (typeof window !== 'undefined' && window.localStorage) {
-    if (resolvedId) {
-      window.localStorage.setItem('vertex_tenant_id', resolvedId);
-    } else {
-      const stored = window.localStorage.getItem('vertex_tenant_id');
-      if (stored) {
-        resolvedId = stored;
+  if (typeof window !== 'undefined') {
+    try {
+      if (window.localStorage) {
+        if (resolvedId) {
+          window.localStorage.setItem('vertex_tenant_id', resolvedId);
+        } else {
+          const stored = window.localStorage.getItem('vertex_tenant_id');
+          if (stored) {
+            resolvedId = stored;
+          }
+        }
       }
+    } catch {
+      // In Safari private browsing or restricted iframes, accessing localStorage can throw a SecurityError
     }
   }
 

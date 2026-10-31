@@ -227,4 +227,67 @@ export class StorageService {
       }),
     );
   }
+
+  // ── WebKit / Safari Private Browsing Safe Web Storage Helpers ──
+  getLocalStorageItem(key: string): string | null {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return window.localStorage.getItem(key);
+      }
+    } catch {
+      // QuotaExceededError or SecurityError in private Safari mode
+    }
+    return null;
+  }
+
+  setLocalStorageItem(key: string, value: string): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(key, value);
+      }
+    } catch {
+      // QuotaExceededError or SecurityError in private Safari mode
+    }
+  }
+
+  removeLocalStorageItem(key: string): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(key);
+      }
+    } catch {
+      // QuotaExceededError or SecurityError in private Safari mode
+    }
+  }
+
+  getSessionStorageItem(key: string): string | null {
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        return window.sessionStorage.getItem(key);
+      }
+    } catch {
+      // QuotaExceededError or SecurityError in private Safari mode
+    }
+    return null;
+  }
+
+  setSessionStorageItem(key: string, value: string): void {
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        window.sessionStorage.setItem(key, value);
+      }
+    } catch {
+      // QuotaExceededError or SecurityError in private Safari mode
+    }
+  }
+
+  removeSessionStorageItem(key: string): void {
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        window.sessionStorage.removeItem(key);
+      }
+    } catch {
+      // QuotaExceededError or SecurityError in private Safari mode
+    }
+  }
 }

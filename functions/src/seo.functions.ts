@@ -6,14 +6,13 @@ import { resolveTenantDb } from './core/tenant-db';
 import { singletonDoc } from './core/config';
 
 export const BOT_USER_AGENTS_REGEX =
-  /whatsapp|facebookexternalhit|twitterbot|telegrambot|linkedinbot|slackbot|discordbot/i;
+  /whatsapp|facebookexternalhit|facebot|twitterbot|telegrambot|linkedinbot|slackbot|discordbot/i;
 
 export const DEFAULT_STORE_ID = 'white-label-store';
 export const DEFAULT_STORE_NAME = 'Vertex Storefront';
 export const DEFAULT_META_DESCRIPTION =
   'Descubre nuestra selección de productos con la mejor calidad, ofertas exclusivas y envíos rápidos. Compra online en Vertex Storefront.';
-export const DEFAULT_IMAGE_URL =
-  'https://vertex-storefront.web.app/assets/images/og-preview.png';
+export const DEFAULT_IMAGE_URL = 'https://vertex-storefront.web.app/assets/images/og-preview.png';
 
 export interface SeoMetadata {
   storeName: string;
@@ -128,8 +127,7 @@ export function isCrawlerBot(userAgent?: string): boolean {
  */
 export function resolveStoreIdFromRequest(req: RequestLike): string {
   // 1. Explicit query param override (useful for non-prod testing and verification)
-  const rawQuery =
-    (req.query?.['storeId'] as string) || (req.query?.['tenantId'] as string);
+  const rawQuery = (req.query?.['storeId'] as string) || (req.query?.['tenantId'] as string);
   if (rawQuery && typeof rawQuery === 'string' && rawQuery.trim()) {
     let cleanQuery = rawQuery.trim();
     if (cleanQuery.startsWith('vtx-') && cleanQuery.length > 4) {
@@ -232,6 +230,36 @@ const DEFAULT_BASE_HTML = `<!doctype html>
   </body>
 </html>`;
 
+/**
+ * Infers a human-readable store brand name from a slug or subdomain.
+ * e.g., "vtx-c-b-market" -> "C B Market", "diente-de-leon" -> "Diente De Leon".
+ */
+export function inferStoreNameFromSlug(rawSlug?: string): string {
+  if (!rawSlug || typeof rawSlug !== 'string') return '';
+  let clean = rawSlug.trim().toLowerCase();
+
+  // Strip technical prefixes/suffixes if present
+  if (clean.startsWith('vtx-sd-') && clean.length > 7) {
+    clean = clean.substring(7);
+  } else if (clean.startsWith('vtx-') && clean.length > 4) {
+    clean = clean.substring(4);
+  }
+  if (clean.endsWith('-vtx') && clean.length > 4) {
+    clean = clean.slice(0, -4);
+  }
+
+  if (!clean || clean === DEFAULT_STORE_ID || clean === 'ecommerce-vertex' || clean === 'ecommerce-vertex-dev') {
+    return '';
+  }
+
+  // Split by hyphens/underscores, capitalize words
+  return clean
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 let cachedBaseHtml: string | null = null;
 
 /**
@@ -244,9 +272,13 @@ export function getBaseHtml(): string {
 
   const candidatePaths = [
     path.join(__dirname, 'index.html'),
+    path.join(__dirname, 'app.html'),
     path.join(__dirname, '../public/index.html'),
+    path.join(__dirname, '../public/app.html'),
     path.join(__dirname, '../../dist/ecommerce-vertex/browser/index.html'),
+    path.join(__dirname, '../../dist/ecommerce-vertex/browser/app.html'),
     path.join(process.cwd(), 'dist/ecommerce-vertex/browser/index.html'),
+    path.join(process.cwd(), 'dist/ecommerce-vertex/browser/app.html'),
     path.join(process.cwd(), 'src/index.html'),
   ];
 
@@ -327,109 +359,133 @@ export function injectSeoTags(baseHtml: string, metadata: SeoMetadata): string {
 /**
  * Cloud Function HTTPS to handle dynamic SEO previews for WhatsApp and social bots.
  */
-export const storefrontSeo = onRequest(
-  { cors: true, invoker: 'public' },
-  async (req, res) => {
+export const storefrontSeo = onRequest({ cors: true, invoker: 'public' }, async (req, res) => {
+  try {
+    // Anti-cache poisoning: vary responses by User-Agent for intermediate proxies and CDN
+    res.setHeader('Vary', 'User-Agent');
+
+    // Load base app.html (or fallback template)
+    const baseHtml = getBaseHtml();
+
+    // Universal SSR flow: resolve store and inject custom OG / HTML tags for ALL requests (human browsers and bots alike)
+    const storeId = resolveStoreIdFromRequest(req);
+    const host =
+      (req.headers['x-forwarded-host'] as string)?.split(',')[0]?.trim() ||
+      req.hostname ||
+      'vertex-storefront.web.app';
+    const protocol = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
+    const fullUrl = `${protocol}://${host}${req.originalUrl || req.url || '/'}`;
+
+    // Smart fallback inferred from host/slug
+    const rawHostOrSlug =
+      (req.headers['x-forwarded-host'] as string)?.split(',')[0]?.split('.')[0] ||
+      req.hostname?.split('.')[0] ||
+      storeId;
+    const inferredName = inferStoreNameFromSlug(rawHostOrSlug) || inferStoreNameFromSlug(storeId);
+
+    const defaultTitle = inferredName ? inferredName : DEFAULT_STORE_NAME;
+    const defaultDescription = inferredName
+      ? `Descubre nuestros productos y novedades con envíos a todo el país en ${inferredName}.`
+      : 'Descubre nuestros productos y novedades con envíos a todo el país.';
+    const defaultImage = normalizeToAbsoluteHttps('/assets/images/og-preview.png', host);
+
+    let storeName = defaultTitle;
+    let description = defaultDescription;
+    let imageUrl = defaultImage;
+
     try {
-      // Anti-cache poisoning: vary responses by User-Agent for intermediate proxies and CDN
-      res.setHeader('Vary', 'User-Agent');
+      const db = resolveTenantDb();
+      // Try 1: configuracion/store_{storeId}
+      let snap = await db.doc(singletonDoc(storeId, 'configuracion', 'store')).get();
 
-      const userAgent = (req.headers['user-agent'] as string) || '';
-      const isBot = isCrawlerBot(userAgent);
-
-      const baseHtml = getBaseHtml();
-
-      // Normal browser flow: dispatch regular HTML
-      if (!isBot) {
-        res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        res.status(200).send(baseHtml);
-        return;
+      // Try 2: stores collection by document ID (e.g., stores/c-b or stores/vtx-c-b-market)
+      let storeDocData: Record<string, any> | undefined;
+      if (!snap.exists) {
+        try {
+          const storeDirectSnap = await db.collection('stores').doc(storeId).get();
+          if (storeDirectSnap.exists) {
+            storeDocData = storeDirectSnap.data();
+          } else {
+            // Also check stores where slug == storeId or siteId == storeId
+            const storesBySlug = await db.collection('stores').where('slug', '==', storeId).limit(1).get();
+            if (!storesBySlug.empty) {
+              storeDocData = storesBySlug.docs[0].data();
+            }
+          }
+        } catch {
+          // Ignore secondary query error
+        }
       }
 
-      // Crawler / Bot flow: resolve store and inject custom OG tags
-      const storeId = resolveStoreIdFromRequest(req);
-      const host =
-        (req.headers['x-forwarded-host'] as string)?.split(',')[0]?.trim() ||
-        req.hostname ||
-        'vertex-storefront.web.app';
-      const protocol =
-        (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
-      const fullUrl = `${protocol}://${host}${req.originalUrl || req.url || '/'}`;
+      // Try 3: Fallback to white-label-store if neither exists
+      if (!snap.exists && !storeDocData && storeId !== DEFAULT_STORE_ID) {
+        snap = await db.doc(singletonDoc(DEFAULT_STORE_ID, 'configuracion', 'store')).get();
+      }
 
-      let storeName = DEFAULT_STORE_NAME;
-      let description = DEFAULT_META_DESCRIPTION;
-      let imageUrl = normalizeToAbsoluteHttps(DEFAULT_IMAGE_URL, host);
+      const data = (snap.exists ? snap.data() : storeDocData) || {};
 
-      try {
-        const db = resolveTenantDb();
-        const storeDocRef = db.doc(singletonDoc(storeId, 'configuracion', 'store'));
-        let snap = await storeDocRef.get();
+      const rawTitle = data['ogTitle'] || data['storeName'] || data['name'];
+      if (typeof rawTitle === 'string' && rawTitle.trim()) {
+        storeName = rawTitle.trim();
+      } else if (inferredName) {
+        storeName = inferredName;
+      } else {
+        storeName = 'Tienda Online';
+      }
 
-        // Fallback to white-label-store if custom tenant document doesn't exist
-        if (!snap.exists && storeId !== DEFAULT_STORE_ID) {
-          snap = await db
-            .doc(singletonDoc(DEFAULT_STORE_ID, 'configuracion', 'store'))
-            .get();
-        }
+      const rawDesc =
+        data['ogDescription'] ||
+        data['tagline'] ||
+        data['seo']?.['metaDescription'] ||
+        data['metaDescription'] ||
+        data['description'];
+      if (typeof rawDesc === 'string' && rawDesc.trim()) {
+        description = rawDesc.trim();
+      } else {
+        description = defaultDescription;
+      }
 
-        if (snap.exists) {
-          const data = snap.data() || {};
-          const rawName = data['storeName'] || data['name'];
-          storeName =
-            typeof rawName === 'string' && rawName.trim()
-              ? rawName.trim()
-              : DEFAULT_STORE_NAME;
+      // Priority: ogImageUrl -> bannerUrl -> logoUrl -> defaultImage (rejecting SVGs)
+      const rawOgImage = typeof data['ogImageUrl'] === 'string' ? data['ogImageUrl'].trim() : '';
+      const rawLogo = typeof data['logoUrl'] === 'string' ? data['logoUrl'].trim() : '';
+      const rawBanner = typeof data['bannerUrl'] === 'string' ? data['bannerUrl'].trim() : '';
 
-          const rawDesc =
-            data['tagline'] ||
-            data['seo']?.['metaDescription'] ||
-            data['metaDescription'];
-          description =
-            typeof rawDesc === 'string' && rawDesc.trim()
-              ? rawDesc.trim()
-              : DEFAULT_META_DESCRIPTION;
-
-          // Strict raster image fallback cascade for WhatsApp & Facebook (SVGs strictly rejected)
-          const rawLogo =
-            typeof data['logoUrl'] === 'string' ? data['logoUrl'].trim() : '';
-          const rawBanner =
-            typeof data['bannerUrl'] === 'string' ? data['bannerUrl'].trim() : '';
-
-          const selectedImage =
-            rawLogo && !isSvgUrl(rawLogo)
+      const selectedImage =
+        rawOgImage && !isSvgUrl(rawOgImage)
+          ? rawOgImage
+          : rawBanner && !isSvgUrl(rawBanner)
+            ? rawBanner
+            : rawLogo && !isSvgUrl(rawLogo)
               ? rawLogo
-              : rawBanner && !isSvgUrl(rawBanner)
-                ? rawBanner
-                : DEFAULT_IMAGE_URL;
+              : defaultImage;
 
-          imageUrl = normalizeToAbsoluteHttps(selectedImage, host);
-        }
-      } catch (dbErr) {
-        logger.warn(
-          `[storefrontSeo] Error fetching store config for tenant "${storeId}":`,
-          dbErr,
-        );
-        // Retain default values defensively
-      }
-
-      const injectedHtml = injectSeoTags(baseHtml, {
-        storeName,
-        description,
-        imageUrl,
-        fullUrl,
-      });
-
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=600');
-      res.status(200).send(injectedHtml);
-    } catch (err) {
-      logger.error('[storefrontSeo] Unexpected error in SEO handler:', err);
-      // Fallback safely to base HTML
-      res.setHeader('Vary', 'User-Agent');
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
-      res.status(200).send(DEFAULT_BASE_HTML);
+      imageUrl = normalizeToAbsoluteHttps(selectedImage, host);
+    } catch (dbErr) {
+      logger.warn(`[storefrontSeo] Error fetching store config for tenant "${storeId}":`, dbErr);
+      // Retain defensive fallback values
     }
-  },
-);
+
+    const injectedHtml = injectSeoTags(baseHtml, {
+      storeName,
+      description,
+      imageUrl,
+      fullUrl,
+    });
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=180, s-maxage=300');
+    res.status(200).send(injectedHtml);
+  } catch (err) {
+    logger.error('[storefrontSeo] Unexpected error in SEO handler:', err);
+    // Fallback safely to base HTML
+    res.setHeader('Vary', 'User-Agent');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
+    res.status(200).send(DEFAULT_BASE_HTML);
+  }
+});
+
+/**
+ * Alias serveStoreMetadata para enrutamiento explícito o invocación como middleware SSR.
+ */
+export const serveStoreMetadata = storefrontSeo;

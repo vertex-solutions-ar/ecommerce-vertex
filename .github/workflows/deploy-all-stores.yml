@@ -131,6 +131,42 @@ jobs:
           FIREBASE_CONFIG_JSON: ${{ matrix.store.firebaseConfig }}
         run: printf '%s' "$FIREBASE_CONFIG_JSON" > dist/ecommerce-vertex/browser/firebase-config.json
 
+      - name: Inject store tenant into the bundle (guard against hostname-based tenant resolution)
+        env:
+          TENANT_ID: ${{ matrix.store.tenantId }}
+        run: |
+          python3 << 'PYEOF'
+          import os, pathlib, re, sys
+
+          tenant = (os.environ.get("TENANT_ID") or "").strip()
+          if not tenant:
+              sys.exit("[tenant-inject] El store no declara tenantId; no se puede desplegar un bundle sin tenant.")
+
+          root = pathlib.Path("dist/ecommerce-vertex/browser")
+          chunks = sorted(root.glob("main-*.js")) or sorted(root.glob("main.*.js"))
+          if not chunks:
+              sys.exit("[tenant-inject] No se encontró el chunk principal (main-*.js) en el bundle.")
+
+          # El build de plantilla estampa un tenantId vacío y el runtime resuelve el tenant
+          # POR HOSTNAME: cualquier tienda cuyo hostname no coincida con su slug leería datos
+          # de otra tienda (o ninguno). Se inyecta el tenant real y se verifica el resultado.
+          chunk = chunks[0]
+          source = chunk.read_text()
+          patched, replacements = re.subn(r'tenantId:\s*(?:""|``)', 'tenantId:"%s"' % tenant, source)
+          if replacements:
+              chunk.write_text(patched)
+              print("[tenant-inject] %s: tenantId inyectado = %s (%s ocurrencia/s)." % (chunk.name, tenant, replacements))
+          elif 'tenantId:"%s"' % tenant in source:
+              print("[tenant-inject] %s ya declara tenantId:%s (sin cambios)." % (chunk.name, tenant))
+          else:
+              sys.exit("[tenant-inject] No hay un tenantId vacío para inyectar: no se puede garantizar "
+                       "que la tienda resuelva su propio tenant. Despliegue abortado.")
+
+          if 'tenantId:"%s"' % tenant not in chunk.read_text():
+              sys.exit("[tenant-inject] Verificación fallida: %s no declara tenantId:%s." % (chunk.name, tenant))
+          print("[tenant-inject] Verificado: el bundle resolverá el tenant '%s'." % tenant)
+          PYEOF
+
       - name: Write minimal firebase.json for store deployment
         run: |
           python3 << 'PYEOF'
@@ -227,6 +263,42 @@ jobs:
         env:
           FIREBASE_CONFIG_JSON: ${{ matrix.store.firebaseConfig }}
         run: printf '%s' "$FIREBASE_CONFIG_JSON" > dist/ecommerce-vertex/browser/firebase-config.json
+
+      - name: Inject store tenant into the bundle (guard against hostname-based tenant resolution)
+        env:
+          TENANT_ID: ${{ matrix.store.tenantId }}
+        run: |
+          python3 << 'PYEOF'
+          import os, pathlib, re, sys
+
+          tenant = (os.environ.get("TENANT_ID") or "").strip()
+          if not tenant:
+              sys.exit("[tenant-inject] El store no declara tenantId; no se puede desplegar un bundle sin tenant.")
+
+          root = pathlib.Path("dist/ecommerce-vertex/browser")
+          chunks = sorted(root.glob("main-*.js")) or sorted(root.glob("main.*.js"))
+          if not chunks:
+              sys.exit("[tenant-inject] No se encontró el chunk principal (main-*.js) en el bundle.")
+
+          # El build de plantilla estampa un tenantId vacío y el runtime resuelve el tenant
+          # POR HOSTNAME: cualquier tienda cuyo hostname no coincida con su slug leería datos
+          # de otra tienda (o ninguno). Se inyecta el tenant real y se verifica el resultado.
+          chunk = chunks[0]
+          source = chunk.read_text()
+          patched, replacements = re.subn(r'tenantId:\s*(?:""|``)', 'tenantId:"%s"' % tenant, source)
+          if replacements:
+              chunk.write_text(patched)
+              print("[tenant-inject] %s: tenantId inyectado = %s (%s ocurrencia/s)." % (chunk.name, tenant, replacements))
+          elif 'tenantId:"%s"' % tenant in source:
+              print("[tenant-inject] %s ya declara tenantId:%s (sin cambios)." % (chunk.name, tenant))
+          else:
+              sys.exit("[tenant-inject] No hay un tenantId vacío para inyectar: no se puede garantizar "
+                       "que la tienda resuelva su propio tenant. Despliegue abortado.")
+
+          if 'tenantId:"%s"' % tenant not in chunk.read_text():
+              sys.exit("[tenant-inject] Verificación fallida: %s no declara tenantId:%s." % (chunk.name, tenant))
+          print("[tenant-inject] Verificado: el bundle resolverá el tenant '%s'." % tenant)
+          PYEOF
 
       - name: Write minimal firebase.json for store deployment
         run: |

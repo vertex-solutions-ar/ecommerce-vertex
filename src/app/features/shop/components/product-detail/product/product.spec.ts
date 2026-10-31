@@ -6,6 +6,8 @@ import { Product } from './product';
 import { ProductService } from '@core/services/product.service';
 import { CartService } from '@core/services/cart.service';
 import { AttributeService } from '@core/services/attribute.service';
+import { SeoService } from '@core/services/seo.service';
+import { StoreConfigService } from '@core/services/store-config.service';
 import type { Product as ProductModel, ProductVariant } from '@core/models/product.model';
 import type { Attribute } from '@core/models/attribute.model';
 
@@ -68,11 +70,21 @@ describe('Product Component (Storefront)', () => {
   let productServiceSpy: jasmine.SpyObj<ProductService>;
   let cartServiceSpy: jasmine.SpyObj<CartService>;
   let attributeServiceSpy: jasmine.SpyObj<AttributeService>;
+  let seoServiceSpy: jasmine.SpyObj<SeoService>;
+  let storeConfigServiceSpy: jasmine.SpyObj<StoreConfigService>;
 
   const setupTestBed = (productData: { product: ProductModel; variants: ProductVariant[] }) => {
     productServiceSpy = jasmine.createSpyObj('ProductService', ['getProductWithVariants']);
     cartServiceSpy = jasmine.createSpyObj('CartService', ['addItem']);
     attributeServiceSpy = jasmine.createSpyObj('AttributeService', ['getAttributes']);
+    seoServiceSpy = jasmine.createSpyObj('SeoService', [
+      'setTitle',
+      'setMetaDescription',
+      'setOpenGraphTags',
+      'setTwitterTags',
+    ]);
+    storeConfigServiceSpy = jasmine.createSpyObj('StoreConfigService', ['storeName']);
+    storeConfigServiceSpy.storeName.and.returnValue('Mi Tienda Test');
 
     productServiceSpy.getProductWithVariants.and.returnValue(of(productData));
     attributeServiceSpy.getAttributes.and.returnValue(of(mockAttributes));
@@ -83,6 +95,8 @@ describe('Product Component (Storefront)', () => {
         { provide: ProductService, useValue: productServiceSpy },
         { provide: CartService, useValue: cartServiceSpy },
         { provide: AttributeService, useValue: attributeServiceSpy },
+        { provide: SeoService, useValue: seoServiceSpy },
+        { provide: StoreConfigService, useValue: storeConfigServiceSpy },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -102,11 +116,21 @@ describe('Product Component (Storefront)', () => {
       setupTestBed({ product: mockProductWithVariants, variants: mockVariants });
     });
 
-    it('should create and load product with variants', () => {
+    it('should create and load product with variants and set dynamic SEO metadata', () => {
       expect(component).toBeTruthy();
       expect(component.product()?.name).toBe('Remera Estampada');
       expect(component.attributes().length).toBe(2);
       expect(component.selectedVariant()).toBeUndefined();
+      expect(seoServiceSpy.setTitle).toHaveBeenCalledWith('Remera Estampada | Mi Tienda Test');
+      expect(seoServiceSpy.setMetaDescription).toHaveBeenCalledWith('Remera 100% algodón');
+      expect(seoServiceSpy.setOpenGraphTags).toHaveBeenCalledWith(
+        jasmine.objectContaining({
+          title: 'Remera Estampada | Mi Tienda Test',
+          description: 'Remera 100% algodón',
+          image: 'https://example.com/remera.jpg',
+          type: 'product',
+        }),
+      );
     });
 
     it('should allow selecting attributes and resolve selectedVariant', () => {
@@ -307,6 +331,8 @@ describe('Product Component (Storefront)', () => {
           { provide: ProductService, useValue: productServiceSpy },
           { provide: CartService, useValue: cartServiceSpy },
           { provide: AttributeService, useValue: attributeServiceSpy },
+          { provide: SeoService, useValue: seoServiceSpy },
+          { provide: StoreConfigService, useValue: storeConfigServiceSpy },
           {
             provide: ActivatedRoute,
             useValue: {

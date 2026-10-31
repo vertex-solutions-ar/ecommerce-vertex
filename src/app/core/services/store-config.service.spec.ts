@@ -243,6 +243,8 @@ describe('StoreConfigService', () => {
         primary: '#111111',
         accent: '#222222',
         background: '#333333',
+        surface: '#ffffff',
+        text: '#444444',
       },
     } as unknown as StoreConfig);
 
@@ -250,7 +252,12 @@ describe('StoreConfigService', () => {
 
     expect(root.style.setProperty).toHaveBeenCalledWith('--color-primary', '#111111');
     expect(root.style.setProperty).toHaveBeenCalledWith('--color-accent', '#222222');
+    expect(root.style.setProperty).toHaveBeenCalledWith('--color-background', '#333333');
     expect(root.style.setProperty).toHaveBeenCalledWith('--shop-bg', '#333333');
+    expect(root.style.setProperty).toHaveBeenCalledWith('--color-surface', '#ffffff');
+    expect(root.style.setProperty).toHaveBeenCalledWith('--shop-surface', '#ffffff');
+    expect(root.style.setProperty).toHaveBeenCalledWith('--color-text', '#444444');
+    expect(root.style.setProperty).toHaveBeenCalledWith('--text-primary', '#444444');
   });
 
   it('should update meta description via effect when seo.metaDescription is set', () => {
@@ -360,6 +367,49 @@ describe('StoreConfigService', () => {
     expect(metaService.updateTag).toHaveBeenCalledWith({
       name: 'twitter:title',
       content: 'Mi Tienda Especial',
+    });
+  });
+
+  it('should prioritize ogTitle, ogDescription, and ogImageUrl in updateSeoTags', () => {
+    const metaService = TestBed.inject(Meta);
+    spyOn(metaService, 'updateTag');
+
+    service.updateSeoTags({
+      storeName: 'Mi Tienda Base',
+      ogTitle: 'Título Open Graph Personalizado',
+      tagline: 'Tagline Base',
+      ogDescription: 'Descripción persuasiva para WhatsApp y Facebook',
+      logoUrl: 'https://logo.png',
+      ogImageUrl: 'https://custom-og-image.png',
+    } as unknown as StoreConfig);
+
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      name: 'description',
+      content: 'Descripción persuasiva para WhatsApp y Facebook',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      property: 'og:site_name',
+      content: 'Título Open Graph Personalizado',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      property: 'og:title',
+      content: 'Título Open Graph Personalizado',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      property: 'og:description',
+      content: 'Descripción persuasiva para WhatsApp y Facebook',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      property: 'og:image',
+      content: 'https://custom-og-image.png',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      name: 'twitter:title',
+      content: 'Título Open Graph Personalizado',
+    });
+    expect(metaService.updateTag).toHaveBeenCalledWith({
+      name: 'twitter:image',
+      content: 'https://custom-og-image.png',
     });
   });
 });

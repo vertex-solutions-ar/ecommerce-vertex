@@ -44,6 +44,38 @@ export class StoreConfig {
   readonly liveStoreName = computed(() => this.formValue()?.storeName ?? 'Mi Tienda');
   readonly liveLogoUrl = computed(() => this.formValue()?.logoUrl ?? '');
   readonly liveBrandDisplayMode = computed(() => this.formValue()?.brandDisplayMode ?? 'text');
+  readonly liveOgTitle = computed(() => {
+    const val = this.formValue();
+    const title = val?.ogTitle?.trim();
+    if (title) {
+      return title;
+    }
+    const store = this.liveStoreName()?.trim();
+    if (store) {
+      return store;
+    }
+    return 'Mi Tienda Online';
+  });
+  readonly liveOgDescription = computed(() => {
+    const val = this.formValue();
+    const desc = val?.ogDescription?.trim();
+    if (desc) {
+      return desc;
+    }
+    const metaDesc = val?.seo?.metaDescription?.trim();
+    if (metaDesc) {
+      return metaDesc;
+    }
+    return 'Visita nuestra tienda online oficial con los mejores productos y ofertas.';
+  });
+  readonly liveOgImageUrl = computed(() => {
+    const val = this.formValue();
+    const ogImg = val?.ogImageUrl?.trim();
+    if (ogImg) {
+      return ogImg;
+    }
+    return this.liveLogoUrl()?.trim() ?? '';
+  });
 
   removeFavicon(): void {
     this.form.patchValue({ faviconUrl: '' });
@@ -81,6 +113,9 @@ export class StoreConfig {
       emailSenderName: cfg?.emailSenderName ?? '',
       emailSignature: cfg?.emailSignature ?? '',
       seo: { metaDescription: cfg?.seo?.metaDescription ?? 'Bienvenidos a mi tienda virtual.' },
+      ogTitle: cfg?.ogTitle ?? '',
+      ogDescription: cfg?.ogDescription ?? '',
+      ogImageUrl: cfg?.ogImageUrl ?? '',
     });
   }
 

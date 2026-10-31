@@ -55,12 +55,21 @@ export class GlobalErrorHandler implements ErrorHandler {
     }
 
     const RELOAD_KEY = 'vtx_chunk_reload_ts';
-    const lastReload = sessionStorage.getItem(RELOAD_KEY);
+    let lastReload: string | null = null;
+    try {
+      lastReload = sessionStorage.getItem(RELOAD_KEY);
+    } catch {
+      // SecurityError in Safari private mode
+    }
     const now = Date.now();
 
     // Evitar loop infinito si hay problemas de red persistentes (mínimo 15s de gracia)
     if (!lastReload || now - Number(lastReload) > 15000) {
-      sessionStorage.setItem(RELOAD_KEY, String(now));
+      try {
+        sessionStorage.setItem(RELOAD_KEY, String(now));
+      } catch {
+        // Ignorar si sessionStorage está bloqueado
+      }
       try {
         const sweetAlert = this.injector.get(SweetAlertService);
         sweetAlert.info(

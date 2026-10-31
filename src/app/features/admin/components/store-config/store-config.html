@@ -211,6 +211,117 @@
                 </div>
               </div>
             </div>
+
+            <!-- 2. Previsualización en WhatsApp y Redes Sociales (Open Graph) -->
+            <div class="glass-card card-seo mb-4">
+              <div class="card-header border-0 fw-bold d-flex align-items-center">
+                <i class="bi bi-whatsapp me-2 text-success"></i> Previsualización en WhatsApp y
+                Redes Sociales
+              </div>
+              <div class="card-body">
+                <p class="text-soft small mb-4">
+                  Configurá el título, descripción e imagen que verán tus clientes cuando compartas
+                  el enlace de tu tienda en WhatsApp, Facebook, Instagram o Twitter.
+                </p>
+
+                <div class="row g-4 mb-4">
+                  <!-- Inputs columna izquierda -->
+                  <div class="col-lg-7">
+                    <div class="mb-3">
+                      <label class="form-label text-label" for="ogTitleInput">
+                        Título Open Graph / WhatsApp
+                      </label>
+                      <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-chat-quote"></i></span>
+                        <input
+                          id="ogTitleInput"
+                          formControlName="ogTitle"
+                          type="text"
+                          class="form-control glass-input"
+                          placeholder="Ej: Vidrios Emilia - Catálogo Oficial"
+                        />
+                      </div>
+                      <div class="form-text text-muted text-xs mt-1">
+                        Si se deja en blanco, se utilizará el nombre del comercio por defecto.
+                      </div>
+                    </div>
+
+                    <div class="mb-3">
+                      <label class="form-label text-label" for="ogDescriptionTextarea">
+                        Descripción Open Graph / Redes Sociales
+                      </label>
+                      <textarea
+                        id="ogDescriptionTextarea"
+                        formControlName="ogDescription"
+                        rows="3"
+                        class="form-control glass-input glass-textarea"
+                        placeholder="Ej: Aberturas y cristales a medida. Envíos a todo Mendoza."
+                      ></textarea>
+                      <div class="form-text text-muted text-xs mt-1">
+                        Breve resumen persuasivo que incita a entrar a la tienda.
+                      </div>
+                    </div>
+
+                    <div class="mb-3">
+                      <label class="form-label text-label" for="ogImageUrlInput">
+                        URL de Imagen / Miniatura Social
+                      </label>
+                      <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-image"></i></span>
+                        <input
+                          id="ogImageUrlInput"
+                          formControlName="ogImageUrl"
+                          type="url"
+                          class="form-control glass-input"
+                          placeholder="https://.../preview.jpg"
+                        />
+                      </div>
+                      <div class="form-text text-muted text-xs mt-1">
+                        URL directa en formato JPG, PNG o WebP (WhatsApp no admite formato SVG). Si
+                        no se define, se usará el logotipo de marca.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- WhatsApp Live Preview Card columna derecha -->
+                  <div class="col-lg-5">
+                    <label class="form-label text-label mb-2">
+                      <i class="bi bi-eye me-1"></i> Vista Previa en Vivo (WhatsApp)
+                    </label>
+
+                    <div class="whatsapp-preview-card">
+                      <div class="whatsapp-bubble">
+                        @if (liveOgImageUrl()) {
+                          <div class="whatsapp-thumb-container">
+                            <img
+                              [src]="liveOgImageUrl()"
+                              alt="Vista previa miniatura"
+                              class="whatsapp-preview-img"
+                            />
+                          </div>
+                        } @else {
+                          <div class="whatsapp-thumb-placeholder">
+                            <i class="bi bi-shop fs-1 text-muted"></i>
+                          </div>
+                        }
+
+                        <div class="whatsapp-meta-content">
+                          <h6 class="whatsapp-title mb-1 text-truncate">
+                            {{ liveOgTitle() }}
+                          </h6>
+                          <p class="whatsapp-description mb-1">
+                            {{ liveOgDescription() }}
+                          </p>
+                          <span class="whatsapp-domain text-muted text-xxs">
+                            vertex-storefront.web.app
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

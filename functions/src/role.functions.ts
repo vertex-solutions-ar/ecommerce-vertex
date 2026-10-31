@@ -157,13 +157,26 @@ export const refreshMyAdminClaim = onCall({ cors: true, invoker: 'public' }, asy
     doc = await db.collection(COLLECTIONS.ADMIN_ROLES).doc(compositeKey).get();
   }
 
-  const role = String(doc.data()?.role || '')
+  let role = String(doc.data()?.role || '')
     .trim()
     .toLowerCase();
+  const status = String(doc.data()?.status || 'active').trim().toLowerCase();
 
-  if (doc.exists && AUTHORIZED_ROLES.has(role)) {
+  if (!doc.exists) {
+    try {
+      const directDoc = await db.collection(COLLECTIONS.ADMIN_ROLES).doc(emailLower).get();
+      if (directDoc?.exists) {
+        doc = directDoc;
+        role = String(doc.data()?.role || '').trim().toLowerCase();
+      }
+    } catch {
+      // Ignore if collection direct get fails in unit mocks
+    }
+  }
+
+  if (doc?.exists && AUTHORIZED_ROLES.has(role) && status !== 'inactive' && status !== 'suspended') {
     logger.info(
-      `refreshMyAdminClaim: granting admin claim to ${email} (UID: ${uid}) tenantId=${tenantId}`,
+      `refreshMyAdminClaim: granting admin claim to ${email} (UID: ${uid}) tenantId=${tenantId} role=${role}`,
     );
     await auth.setCustomUserClaims(uid, { admin: true, role, tenantId });
     return { granted: true };
@@ -172,3 +185,9 @@ export const refreshMyAdminClaim = onCall({ cors: true, invoker: 'public' }, asy
   logger.info(`refreshMyAdminClaim: no admin_roles entry for ${email}`);
   return { granted: false };
 });
+
+/**
+ * Endpoint de sincronización callable syncUserRoleClaims (alias directo de refreshMyAdminClaim)
+ * para sincronización explícita tras login con Google OAuth.
+ */
+export const syncUserRoleClaims = refreshMyAdminClaim;

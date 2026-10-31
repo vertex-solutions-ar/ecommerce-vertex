@@ -134,6 +134,8 @@ export interface StoreConfig {
     primary: string;
     accent: string;
     background: string;
+    surface?: string;
+    text?: string;
   };
   payments: {
     mercadoPagoPublicKey: string;
@@ -166,6 +168,11 @@ export interface StoreConfig {
   notificationEmail?: string;
   emailSenderName?: string;
   emailSignature?: string;
+
+  // Redes Sociales & Open Graph (WhatsApp, Facebook, Twitter)
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImageUrl?: string;
 
   // Legacy compatibility fields
   contactPhone?: string;

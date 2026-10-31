@@ -369,4 +369,40 @@ describe('StorageService', () => {
       });
     });
   });
+
+  describe('Safe Web Storage Helpers (Safari/WebKit)', () => {
+    it('should read, write, and remove localStorage safely', () => {
+      service.setLocalStorageItem('test_key', 'test_val');
+      expect(service.getLocalStorageItem('test_key')).toBe('test_val');
+      service.removeLocalStorageItem('test_key');
+      expect(service.getLocalStorageItem('test_key')).toBeNull();
+    });
+
+    it('should handle localStorage throwing errors gracefully', () => {
+      spyOn(window.localStorage, 'getItem').and.throwError(new Error('QuotaExceeded'));
+      spyOn(window.localStorage, 'setItem').and.throwError(new Error('QuotaExceeded'));
+      spyOn(window.localStorage, 'removeItem').and.throwError(new Error('QuotaExceeded'));
+
+      expect(service.getLocalStorageItem('fail')).toBeNull();
+      expect(() => service.setLocalStorageItem('fail', 'val')).not.toThrow();
+      expect(() => service.removeLocalStorageItem('fail')).not.toThrow();
+    });
+
+    it('should read, write, and remove sessionStorage safely', () => {
+      service.setSessionStorageItem('sess_key', 'sess_val');
+      expect(service.getSessionStorageItem('sess_key')).toBe('sess_val');
+      service.removeSessionStorageItem('sess_key');
+      expect(service.getSessionStorageItem('sess_key')).toBeNull();
+    });
+
+    it('should handle sessionStorage throwing errors gracefully', () => {
+      spyOn(window.sessionStorage, 'getItem').and.throwError(new Error('QuotaExceeded'));
+      spyOn(window.sessionStorage, 'setItem').and.throwError(new Error('QuotaExceeded'));
+      spyOn(window.sessionStorage, 'removeItem').and.throwError(new Error('QuotaExceeded'));
+
+      expect(service.getSessionStorageItem('fail')).toBeNull();
+      expect(() => service.setSessionStorageItem('fail', 'val')).not.toThrow();
+      expect(() => service.removeSessionStorageItem('fail')).not.toThrow();
+    });
+  });
 });

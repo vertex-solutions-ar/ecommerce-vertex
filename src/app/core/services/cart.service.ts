@@ -4,6 +4,7 @@ import type { Cart, CartItem } from '@core/models/cart.model';
 import { SweetAlertService } from './sweet-alert.service';
 import { AttributeService } from './attribute.service';
 import { ProductService } from './product.service';
+import { StorageService } from './storage.service';
 import { firstValueFrom, take, timeout, of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { environment } from '../../../environments/environment';
@@ -16,6 +17,7 @@ export class CartService {
   private destroyRef = inject(DestroyRef);
   private attributeService = inject(AttributeService);
   private productService = inject(ProductService);
+  private storageService = inject(StorageService);
   private readonly CART_STORAGE_KEY = `cart_${environment.tenantId}`;
 
   private attributeMap = new Map<string, string>();
@@ -46,7 +48,7 @@ export class CartService {
 
   private getCartFromStorage(): Cart {
     try {
-      const cartJson = localStorage.getItem(this.CART_STORAGE_KEY);
+      const cartJson = this.storageService.getLocalStorageItem(this.CART_STORAGE_KEY);
       if (cartJson) {
         const cart = JSON.parse(cartJson) as Cart;
         if (!cart.items) {
@@ -56,14 +58,14 @@ export class CartService {
       }
     } catch (error) {
       console.error('Error reading cart from localStorage', error);
-      localStorage.removeItem(this.CART_STORAGE_KEY);
+      this.storageService.removeLocalStorageItem(this.CART_STORAGE_KEY);
     }
     return { items: [], total: 0 };
   }
 
   private saveCartToStorage(cart: Cart): void {
     try {
-      localStorage.setItem(this.CART_STORAGE_KEY, JSON.stringify(cart));
+      this.storageService.setLocalStorageItem(this.CART_STORAGE_KEY, JSON.stringify(cart));
     } catch (error) {
       console.error('Error saving cart to localStorage', error);
     }

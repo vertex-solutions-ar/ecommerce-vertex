@@ -75,6 +75,14 @@ export class StoreConfigService {
             root.style.setProperty('--color-background', config.colors.background);
             root.style.setProperty('--shop-bg', config.colors.background);
           }
+          if (config.colors.surface) {
+            root.style.setProperty('--color-surface', config.colors.surface);
+            root.style.setProperty('--shop-surface', config.colors.surface);
+          }
+          if (config.colors.text) {
+            root.style.setProperty('--color-text', config.colors.text);
+            root.style.setProperty('--text-primary', config.colors.text);
+          }
         }
 
         // 4. Font family
@@ -245,9 +253,26 @@ export class StoreConfigService {
    * for client-side runtime browser updates.
    */
   updateSeoTags(config: StoreConfig): void {
-    const storeName = config.storeName ?? 'Mi Tienda';
-    const description = config.tagline ? config.tagline : (config.seo?.metaDescription ?? '');
-    const imageUrl = config.logoUrl ?? '';
+    const pickFirstNonEmpty = (...candidates: (string | undefined | null)[]): string => {
+      for (const c of candidates) {
+        if (typeof c === 'string') {
+          const trimmed = c.trim();
+          if (trimmed.length > 0) {
+            return trimmed;
+          }
+        }
+      }
+      return '';
+    };
+
+    const storeName = pickFirstNonEmpty(config.ogTitle, config.storeName, 'Mi Tienda');
+    const description = pickFirstNonEmpty(
+      config.ogDescription,
+      config.tagline,
+      config.seo?.metaDescription,
+    );
+    const imageUrl = pickFirstNonEmpty(config.ogImageUrl, config.logoUrl);
+
     const currentUrl =
       typeof window !== 'undefined' && window.location?.href ? window.location.href : '';
 
@@ -303,6 +328,14 @@ export class StoreConfigService {
       if (config.colors.background) {
         root.style.setProperty('--color-background', config.colors.background);
         root.style.setProperty('--shop-bg', config.colors.background);
+      }
+      if (config.colors.surface) {
+        root.style.setProperty('--color-surface', config.colors.surface);
+        root.style.setProperty('--shop-surface', config.colors.surface);
+      }
+      if (config.colors.text) {
+        root.style.setProperty('--color-text', config.colors.text);
+        root.style.setProperty('--text-primary', config.colors.text);
       }
     }
     root.style.setProperty('--font-family', 'Inter');

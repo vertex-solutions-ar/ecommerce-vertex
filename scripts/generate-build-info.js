@@ -55,6 +55,57 @@ function getSourceRef() {
   return (process.env.DEPLOY_SOURCE_REF || '').trim();
 }
 
+/**
+ * Tenant que el bundle va a resolver en runtime: se lee del archivo de environment
+ * con el que se compila (el workflow de provisión reescribe `environment.prod.ts` con
+ * el `tenantId` de la tienda antes de buildear).
+ */
+function getResolvedTenantId() {
+  const candidates = [
+    'environment.prod.ts',
+    'environment.dev-template.ts',
+    'environment.store.ts',
+    'environment.ts',
+  ];
+  const dir = path.resolve(__dirname, '../src/environments');
+  for (const file of candidates) {
+    const filePath = path.join(dir, file);
+    if (!fs.existsSync(filePath)) continue;
+    const match = fs
+      .readFileSync(filePath, 'utf-8')
+      .match(new RegExp('tenantId:\\s*[\'"]([^\'"]*)[\'"]'));
+    if (match && match[1]) return match[1];
+  }
+  return '';
+}
+
+/**
+ * Guarda de wiring del tenant (prevención de un incidente real en producción).
+ *
+ * El pipeline de provisión declara el tenant esperado en `DEPLOY_TENANT_ID`. Si el
+ * environment compilado resuelve otro tenant — o el placeholder `store`, que hace que
+ * el storefront resuelva por hostname y lea datos de OTRA tienda — se aborta el build
+ * antes de publicar nada. Sólo se aplica cuando el pipeline declara la expectativa: los
+ * builds de plantilla resuelven el tenant en runtime a propósito.
+ */
+function assertTenantWiring(resolvedTenantId) {
+  const expected = (process.env.DEPLOY_TENANT_ID || '').trim();
+  if (!expected) return;
+  if (!resolvedTenantId) {
+    throw new Error(
+      `[build-info] WRONG_TENANT: el build no expone tenantId y se esperaba '${expected}'. ` +
+        'Revisá la inyección de `tenantId` en el environment antes de desplegar.',
+    );
+  }
+  if (resolvedTenantId !== expected) {
+    throw new Error(
+      `[build-info] WRONG_TENANT: el bundle resolvería el tenant '${resolvedTenantId}' pero se ` +
+        `esperaba '${expected}'. Un tenant distinto hace que el storefront lea datos de otra ` +
+        'tienda. Build abortado.',
+    );
+  }
+}
+
 function main() {
   const version = getPackageVersion();
   const commitSha = getCommitSha();
@@ -68,6 +119,8 @@ function main() {
       : redeployNumber > 0;
   const sourceKind = getSourceKind();
   const sourceRef = getSourceRef();
+  const tenantId = getResolvedTenantId();
+  assertTenantWiring(tenantId);
 
   const buildInfo = {
     version,
@@ -80,6 +133,7 @@ function main() {
     deployTimestamp,
     sourceKind,
     sourceRef,
+    tenantId,
   };
 
   const environmentsDir = path.resolve(__dirname, '../src/environments');
@@ -106,12 +160,15 @@ export const BUILD_INFO = {
   deployTimestamp: '${deployTimestamp}',
   sourceKind: '${sourceKind}',
   sourceRef: '${sourceRef}',
+  tenantId: '${tenantId}',
 } as const;
 `;
 
   const tsFilePath = path.join(environmentsDir, 'build-info.ts');
   fs.writeFileSync(tsFilePath, tsContent, 'utf-8');
-  console.log(`[build-info] Stamped ${tsFilePath} -> v${version} (${commitSha})`);
+  console.log(
+    `[build-info] Stamped ${tsFilePath} -> v${version} (${commitSha}) · tenant:'${tenantId}'`,
+  );
 
   // 2. Generar src/assets/version.json
   const jsonContent = JSON.stringify(buildInfo, null, 2) + '\n';

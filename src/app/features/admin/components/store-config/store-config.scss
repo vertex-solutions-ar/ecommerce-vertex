@@ -622,3 +622,82 @@
 .text-xxs {
   font-size: 0.7rem;
 }
+
+// ── WhatsApp Preview Card ──────────────────────────────────────────────────
+.whatsapp-preview-card {
+  background: #0b141a;
+  border-radius: 18px;
+  padding: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+.whatsapp-bubble {
+  background: #202c33;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.whatsapp-thumb-container {
+  width: 100%;
+  height: 180px;
+  background: #111b21;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+
+  .whatsapp-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.whatsapp-thumb-placeholder {
+  width: 100%;
+  height: 140px;
+  background: #111b21;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.whatsapp-meta-content {
+  padding: 0.85rem 1rem;
+
+  .whatsapp-title {
+    color: #e9edef;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 0;
+  }
+
+  .whatsapp-description {
+    color: #8696a0;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 0;
+  }
+
+  .whatsapp-domain {
+    color: #8696a0;
+    font-size: 0.7rem;
+    text-transform: lowercase;
+    margin-top: 0.35rem;
+    display: block;
+  }
+}

@@ -517,6 +517,37 @@ jobs:
           REDEPLOY_NUMBER: ${{ github.event.client_payload.redeploy_number || github.event.client_payload.meta.redeploy_number || '0' }}
           IS_REDEPLOY: ${{ github.event.client_payload.is_redeploy || github.event.client_payload.meta.is_redeploy || 'false' }}
           DEPLOY_TIMESTAMP: ${{ github.event.client_payload.deploy_timestamp || github.event.client_payload.meta.deploy_timestamp || '' }}
+          # Guarda de wiring: el build aborta si el bundle resuelve otro tenant.
+          DEPLOY_TENANT_ID: ${{ github.event.client_payload.tenant_id || github.event.client_payload.store_id }}
+
+      - name: Verify tenant wiring on build output (pre-deploy guard)
+        run: |
+          EXPECTED="${{ github.event.client_payload.tenant_id || github.event.client_payload.store_id }}"
+          if [ -z "$EXPECTED" ]; then
+            echo "::error::El payload no declara tenant_id/store_id; no se puede validar el tenant del bundle."
+            exit 1
+          fi
+          # Fuente de verdad: el environment que el propio workflow escribió con el tenant
+          # del payload. Es independiente del ref desplegado (que puede ser anterior al
+          # estampado de tenantId en version.json).
+          ACTUAL=$(grep -oE "tenantId: ['\"][^'\"]*['\"]" src/environments/environment.prod.ts | head -1 | sed -E "s/.*['\"]([^'\"]*)['\"].*/\1/")
+          echo "tenantId esperado: '$EXPECTED' · inyectado en el build: '$ACTUAL'"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::El bundle resolvería el tenant '$ACTUAL' pero se esperaba '$EXPECTED'. Se aborta antes de publicar: un tenant distinto hace que el storefront lea datos de otra tienda."
+            exit 1
+          fi
+          # Defensa extra: si el ref ya estampa tenantId en version.json, se cruza también.
+          STAMPED=$(python3 -c "
+          import json
+          try:
+              print(json.load(open('dist/ecommerce-vertex/browser/assets/version.json')).get('tenantId','') or '')
+          except Exception:
+              print('')
+          ")
+          if [ -n "$STAMPED" ] && [ "$STAMPED" != "$EXPECTED" ]; then
+            echo "::error::version.json declara tenantId '$STAMPED' pero se esperaba '$EXPECTED'."
+            exit 1
+          fi
 
       - name: Write minimal firebase.json for store deployment
         run: |
@@ -572,6 +603,62 @@ jobs:
             echo "Deploying default hosting to Firebase project $PROJECT_ID..."
           fi
           npx firebase-tools deploy --project "$PROJECT_ID" --only hosting --non-interactive
+
+      - name: Verify deployed tenant wiring (post-deploy guard)
+        run: |
+          SITE_ID="${{ github.event.client_payload.site_id }}"
+          EXPECTED="${{ github.event.client_payload.tenant_id || github.event.client_payload.store_id }}"
+          if [ -z "$SITE_ID" ] || [ "$SITE_ID" = "default" ] || [ -z "$EXPECTED" ]; then
+            echo "Sin site_id dedicado o sin tenant declarado: se omite la verificación en vivo."
+            exit 0
+          fi
+          URL="https://${SITE_ID}.web.app/assets/version.json"
+          BODY=""
+          for i in 1 2 3 4 5; do
+            BODY=$(curl -fsS --max-time 20 "$URL" 2>/dev/null || true)
+            [ -n "$BODY" ] && break
+            echo "Reintentando lectura de $URL (propagación del CDN)..."
+            sleep 10
+          done
+          if [ -z "$BODY" ]; then
+            echo "::warning::No se pudo leer $URL para confirmar el tenant desplegado."
+            exit 0
+          fi
+          # Si version.json no trae tenantId (ref anterior al estampado) se verifica el bundle
+          # servido, que siempre lleva el tenant inyectado por el build.
+          DEPLOYED=$(python3 - "$SITE_ID" "$BODY" <<'PYEOF'
+          import json, re, sys, urllib.request
+
+          site, body = sys.argv[1], sys.argv[2]
+          try:
+              tenant = (json.loads(body) or {}).get("tenantId", "") or ""
+          except Exception:
+              tenant = ""
+          if not tenant:
+              def fetch(url):
+                  try:
+                      with urllib.request.urlopen(url, timeout=25) as res:
+                          return res.read().decode("utf-8", "ignore")
+                  except Exception:
+                      return ""
+              html = fetch("https://%s.web.app/" % site)
+              match = re.search(r"main-[A-Z0-9]{8}\.js", html)
+              if match:
+                  js = fetch("https://%s.web.app/%s" % (site, match.group(0)))
+                  found = re.search(r'tenantId:\s*[`"\']([^`"\']*)[`"\']', js)
+                  tenant = found.group(1) if found else ""
+          print(tenant)
+          PYEOF
+          )
+          if [ -z "$DEPLOYED" ]; then
+            echo "::warning::No se pudo determinar el tenant servido en $URL (ref anterior al estampado); se omite la verificación en vivo."
+            exit 0
+          fi
+          echo "tenantId desplegado: '$DEPLOYED' · esperado: '$EXPECTED'"
+          if [ "$DEPLOYED" != "$EXPECTED" ]; then
+            echo "::error::El sitio quedó sirviendo el tenant '$DEPLOYED' en vez de '$EXPECTED'. Revisar la inyección de tenantId en el build."
+            exit 1
+          fi
 
       - name: Notify platform of deployment completion
         if: always() && !cancelled() && github.event.client_payload.platform_project_id != ''

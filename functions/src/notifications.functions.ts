@@ -305,14 +305,68 @@ export async function sendOrderNotificationEmailsDirect(
     let adminSent = false;
     let customerSent = false;
 
-    // 1. Email al Administrador / Vendedor
-    const adminEmail = (
+    // 1. Recolección de Destinatarios de Tienda (Owner + Staff activo)
+    const staffRecipients = new Set<string>();
+
+    const primaryOwnerEmail = (
       (config?.['storeOwnerEmail'] as string) ||
       (config?.['notificationEmail'] as string) ||
       getNotificationEmail()
-    )?.trim();
+    )?.trim().toLowerCase();
 
-    if (adminEmail) {
+    if (primaryOwnerEmail && primaryOwnerEmail.includes('@')) {
+      staffRecipients.add(primaryOwnerEmail);
+    }
+
+    // Consultar todos los administradores y empleados activos de la tienda en admin_roles
+    try {
+      const allowedRoles = new Set(['owner', 'admin', 'staff', 'employee']);
+      // 1. Consulta por storeId / tenantId directo
+      const rolesSnap = await tenantDb
+        .collection(COLLECTIONS.ADMIN_ROLES)
+        .where('storeId', '==', effectiveStoreId)
+        .get();
+
+      rolesSnap.forEach((doc) => {
+        const d = doc.data();
+        const role = String(d?.['role'] || '').trim().toLowerCase();
+        const status = String(d?.['status'] || 'active').trim().toLowerCase();
+        const email = String(d?.['email'] || (doc.id.includes('_') ? doc.id.split('_').slice(1).join('_') : doc.id))
+          .trim()
+          .toLowerCase();
+
+        if (email.includes('@') && allowedRoles.has(role) && status !== 'inactive' && status !== 'suspended') {
+          staffRecipients.add(email);
+        }
+      });
+
+      // 2. Fallback de claves compuestas {tenantId}_{email} por si storeId no fue indexado
+      if (staffRecipients.size === 0 || (staffRecipients.size === 1 && primaryOwnerEmail)) {
+        const allRolesSnap = await tenantDb.collection(COLLECTIONS.ADMIN_ROLES).get();
+        allRolesSnap.forEach((doc) => {
+          if (doc.id.startsWith(`${effectiveStoreId}_`)) {
+            const d = doc.data();
+            const role = String(d?.['role'] || '').trim().toLowerCase();
+            const status = String(d?.['status'] || 'active').trim().toLowerCase();
+            const email = String(d?.['email'] || doc.id.slice(`${effectiveStoreId}_`.length))
+              .trim()
+              .toLowerCase();
+            if (email.includes('@') && allowedRoles.has(role) && status !== 'inactive' && status !== 'suspended') {
+              staffRecipients.add(email);
+            }
+          }
+        });
+      }
+    } catch (staffErr) {
+      logger.warn(
+        `[OrderNotifications] Error consultando staff activo para ${effectiveStoreId}:`,
+        staffErr,
+      );
+    }
+
+    const recipientList = Array.from(staffRecipients);
+
+    if (recipientList.length > 0) {
       const adminConfig = (config?.['adminNotification'] as {
         subject?: string;
         template?: string;
@@ -356,22 +410,32 @@ export async function sendOrderNotificationEmailsDirect(
         .replace(/{orderId}/g, orderId)
         .replace(/{storeName}/g, cleanStoreName);
 
-      const adminResult = await sendEmail({
-        to: adminEmail,
-        from: fromAddress,
-        subject: adminSubject,
-        html: adminHtml,
-      });
+      // Despacho concurrente a todo el equipo administrativo
+      const results = await Promise.allSettled(
+        recipientList.map((targetEmail) =>
+          sendEmail({
+            to: targetEmail,
+            from: fromAddress,
+            subject: adminSubject,
+            html: adminHtml,
+            replyTo: orderData.clientEmail || storeSupportEmail,
+          }),
+        ),
+      );
 
-      adminSent = adminResult.success;
+      const successfulSends = results.filter(
+        (r) => r.status === 'fulfilled' && r.value.success,
+      );
+      adminSent = successfulSends.length > 0;
+
       logger.info(
-        `[OrderNotifications] Email a vendedor (${adminEmail}): ${
-          adminResult.success ? 'ENVIADO' : 'FALLÓ'
-        }${adminResult.success ? '' : adminResult.skipped ? ' (SMTP no configurado)' : ' (error de envío)'}`,
+        `[OrderNotifications] Emails despachados a equipo de tienda (${recipientList.join(
+          ', ',
+        )}): ${successfulSends.length}/${recipientList.length} exitosos.`,
       );
     } else {
       logger.warn(
-        `[OrderNotifications] No se encontró email de vendedor configurado para tienda ${effectiveStoreId}.`,
+        `[OrderNotifications] No se encontraron destinatarios de staff o dueño para la tienda ${effectiveStoreId}.`,
       );
     }
 
