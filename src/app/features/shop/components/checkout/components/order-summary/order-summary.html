@@ -21,6 +21,24 @@
       </div>
     }
   </div>
+  @if (discountAmount > 0) {
+    <div class="order-summary__breakdown">
+      <div class="order-summary__row">
+        <span class="order-summary__row-label">Subtotal</span>
+        <span class="order-summary__row-value">
+          {{ subtotal ?? total + discountAmount | currency: 'ARS' : '$' }}
+        </span>
+      </div>
+      <div class="order-summary__row order-summary__row--discount">
+        <span class="order-summary__row-label">
+          Descuento transferencia ({{ discountPercentage }}% OFF)
+        </span>
+        <span class="order-summary__row-value">
+          - {{ discountAmount | currency: 'ARS' : '$' }}
+        </span>
+      </div>
+    </div>
+  }
   <div class="order-summary__total">
     <span class="order-summary__total-label">Total</span>
     <span class="order-summary__total-amount">{{ total | currency: 'ARS' : '$' }}</span>

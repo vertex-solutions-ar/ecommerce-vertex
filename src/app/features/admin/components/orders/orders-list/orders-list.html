@@ -243,21 +243,36 @@
                         </td>
                       }
                       <td data-label="Estado" class="text-center order-status">
-                        <select
-                          class="form-select form-select-sm glass-status-select mx-auto"
-                          [ngClass]="'status--' + order.status"
-                          [ngModel]="order.status"
-                          (ngModelChange)="updateOrderStatus(order, $event)"
-                          title="Cambiar estado de orden"
-                          aria-label="Cambiar estado de orden"
-                        >
-                          <option value="pending">Pendiente</option>
-                          <option value="processing">Procesando</option>
-                          <option value="ready_for_pickup">Listo para Retirar</option>
-                          <option value="shipped">Enviado</option>
-                          <option value="delivered">Entregado</option>
-                          <option value="cancelled">Cancelado</option>
-                        </select>
+                        <div class="d-flex flex-column align-items-center gap-1">
+                          <select
+                            class="form-select form-select-sm glass-status-select mx-auto"
+                            [ngClass]="'status--' + order.status"
+                            [ngModel]="order.status"
+                            (ngModelChange)="updateOrderStatus(order, $event)"
+                            title="Cambiar estado de orden"
+                            aria-label="Cambiar estado de orden"
+                          >
+                            <option value="pending">Pendiente</option>
+                            <option value="processing">Procesando</option>
+                            <option value="ready_for_pickup">Listo para Retirar</option>
+                            <option value="shipped">Enviado</option>
+                            <option value="delivered">Entregado</option>
+                            <option value="cancelled">Cancelado</option>
+                          </select>
+                          @if (isTransferOrder(order)) {
+                            <span
+                              class="badge-transfer"
+                              title="Orden abonada por transferencia bancaria"
+                            >
+                              <i class="bi bi-bank" aria-hidden="true"></i>
+                              @if (getTransferDiscountPercentage(order) > 0) {
+                                Transferencia (-{{ getTransferDiscountPercentage(order) }}%)
+                              } @else {
+                                Transferencia
+                              }
+                            </span>
+                          }
+                        </div>
                       </td>
                       <td data-label="Acciones" class="text-end action-cell">
                         <div
@@ -328,7 +343,7 @@
                     >
                       {{ order.clientName }}
                     </div>
-                    <div class="order-delivery d-flex align-items-center gap-2">
+                    <div class="order-delivery d-flex align-items-center flex-wrap gap-2">
                       @let badge = getDeliveryBadge(order);
                       <span
                         class="badge-delivery"
@@ -338,6 +353,19 @@
                         <i class="bi" [ngClass]="badge.icon" aria-hidden="true"></i>
                         <span>{{ badge.label }}</span>
                       </span>
+                      @if (isTransferOrder(order)) {
+                        <span
+                          class="badge-transfer"
+                          title="Orden abonada por transferencia bancaria"
+                        >
+                          <i class="bi bi-bank" aria-hidden="true"></i>
+                          @if (getTransferDiscountPercentage(order) > 0) {
+                            Transferencia (-{{ getTransferDiscountPercentage(order) }}%)
+                          } @else {
+                            Transferencia
+                          }
+                        </span>
+                      }
                       @if (badge.summary) {
                         <span class="text-muted-custom small text-truncate" [title]="badge.summary">
                           {{ badge.summary }}

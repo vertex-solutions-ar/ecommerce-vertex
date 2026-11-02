@@ -434,5 +434,49 @@ describe('OrdersList', () => {
       expect(result.length).toBe(1);
       expect(result[0].id).toBe('ORD-003');
     }));
+
+    it('should identify transfer orders and render Transferencia (-Y%) badge', fakeAsync(() => {
+      const transferOrder: Order = {
+        ...mockOrders[0],
+        id: 'ORD-TRANSFER',
+        paymentMethod: 'transfer',
+        discountPercentage: 15,
+        discountAmount: 150,
+        total: 850,
+      };
+      orderServiceSpy.getOrders.and.returnValue(of([transferOrder]));
+
+      const localFixture = TestBed.createComponent(OrdersList);
+      const localComponent = localFixture.componentInstance;
+      localFixture.detectChanges();
+      tick(300);
+      localFixture.detectChanges();
+
+      expect(localComponent.isTransferOrder(transferOrder)).toBeTrue();
+      expect(localComponent.getTransferDiscountPercentage(transferOrder)).toBe(15);
+
+      const el = localFixture.nativeElement as HTMLElement;
+      expect(el.textContent).toContain('Transferencia (-15%)');
+    }));
+
+    it('should cover paymentDetails fallback branches in isTransferOrder and getTransferDiscountPercentage', () => {
+      const fallbackTransferOrder: Order = {
+        ...mockOrders[0],
+        paymentMethod: undefined,
+        discountPercentage: undefined,
+        paymentDetails: {
+          paymentMethod: 'transfer',
+          subtotal: 1000,
+          discountPercentage: 10,
+          shippingCost: 0,
+          taxAmount: 0,
+        },
+      };
+
+      expect(component.isTransferOrder(fallbackTransferOrder)).toBeTrue();
+      expect(component.getTransferDiscountPercentage(fallbackTransferOrder)).toBe(10);
+      expect(component.isTransferOrder(mockOrders[0])).toBeFalse();
+      expect(component.getTransferDiscountPercentage(mockOrders[0])).toBe(0);
+    });
   });
 });
