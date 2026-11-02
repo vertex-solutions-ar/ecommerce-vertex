@@ -108,8 +108,8 @@ describe('OrderDetail', () => {
     orderServiceSpy = jasmine.createSpyObj('OrderService', ['getOrderById', 'updateOrder']);
     storeConfigServiceSpy = jasmine.createSpyObj('StoreConfigService', [], {
       storeConfig: mockStoreConfigSignal,
-      storeName: 'Test Store',
-      logoUrl: '',
+      storeName: signal('Test Store'),
+      logoUrl: signal(''),
     });
 
     orderServiceSpy.getOrderById.and.returnValue(of(mockOrderPickup));
@@ -296,5 +296,82 @@ describe('OrderDetail', () => {
         expect(component.currentStatus).toBe(st);
       }
     }));
+
+    it('should render transfer discount row, receipt badge, and open receipt-modal on click', () => {
+      const transferOrder: Order = {
+        ...mockOrderPickup,
+        id: 'ORD-TRANSFER-1',
+        paymentMethod: 'transfer',
+        subtotal: 5000,
+        discountPercentage: 10,
+        discountAmount: 500,
+        total: 4500,
+        receiptUrl: 'https://example.com/comprobante.jpg',
+        paymentDetails: {
+          paymentMethod: 'transfer',
+          subtotal: 5000,
+          discountPercentage: 10,
+          discountAmount: 500,
+          receiptUrl: 'https://example.com/comprobante.jpg',
+          shippingCost: 0,
+          taxAmount: 0,
+        },
+      };
+
+      orderServiceSpy.getOrderById.and.returnValue(of(transferOrder));
+      component.ngOnInit();
+      fixture.detectChanges();
+
+      expect(component.isTransferOrder(transferOrder)).toBeTrue();
+      expect(component.hasReceipt(transferOrder)).toBeTrue();
+      expect(component.getDiscountAmount(transferOrder)).toBe(500);
+      expect(component.getDiscountPercentage(transferOrder)).toBe(10);
+
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.textContent).toContain('Transferencia Bancaria');
+      expect(el.textContent).toContain('10% OFF');
+      expect(el.textContent).toContain('Descuento por Transferencia');
+      expect(el.textContent).toContain('Comprobante adjunto');
+
+      const receiptBtn = el.querySelector('.badge-receipt-action') as HTMLButtonElement | null;
+      expect(receiptBtn).toBeTruthy();
+      receiptBtn?.click();
+      fixture.detectChanges();
+
+      expect(component.showReceipt).toBeTrue();
+      expect(component.receiptOrder).toEqual(transferOrder);
+
+      component.onPaymentConfirmed('processing');
+      expect(component.currentStatus).toBe('processing');
+    });
+
+    it('should cover paymentDetails fallback branches for transfer helpers', () => {
+      const fallbackOrder: Order = {
+        ...mockOrderPickup,
+        paymentMethod: undefined,
+        receiptUrl: undefined,
+        discountAmount: undefined,
+        discountPercentage: undefined,
+        paymentDetails: {
+          paymentMethod: 'transfer',
+          subtotal: 5000,
+          discountAmount: 250,
+          discountPercentage: 5,
+          receiptUrl: 'https://example.com/fallback.jpg',
+          shippingCost: 0,
+          taxAmount: 0,
+        },
+      };
+
+      expect(component.isTransferOrder(fallbackOrder)).toBeTrue();
+      expect(component.hasReceipt(fallbackOrder)).toBeTrue();
+      expect(component.getDiscountAmount(fallbackOrder)).toBe(250);
+      expect(component.getDiscountPercentage(fallbackOrder)).toBe(5);
+
+      expect(component.isTransferOrder(mockOrderPickup)).toBeFalse();
+      expect(component.hasReceipt(mockOrderPickup)).toBeFalse();
+      expect(component.getDiscountAmount(mockOrderPickup)).toBe(0);
+      expect(component.getDiscountPercentage(mockOrderPickup)).toBe(0);
+    });
   });
 });

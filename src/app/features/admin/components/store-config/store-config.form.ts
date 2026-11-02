@@ -16,6 +16,18 @@ export function createStoreConfigForm(fb: FormBuilder): FormGroup {
       background: ['#ffffff', Validators.required],
     }),
     payments: fb.group({ mercadoPagoPublicKey: [''] }),
+    paymentMethods: fb.group({
+      bankTransfer: fb.group({
+        enabled: [false],
+        discountPercentage: [0, [Validators.min(0), Validators.max(100)]],
+        bankName: [''],
+        accountHolder: [''],
+        cbu: [''],
+        alias: [''],
+        cuit: [''],
+        instructions: [''],
+      }),
+    }),
     contact: fb.group({
       phone: [''],
       email: [''],
