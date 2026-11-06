@@ -12,12 +12,15 @@ import type { FormGroup, AbstractControl } from '@angular/forms';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import type { WithFieldValue } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
 import { OrderSummary } from './components/order-summary/order-summary';
 import { CartService } from '@core/services/cart.service';
 import type { CartItem } from '@core/models/cart.model';
 import { PaymentService } from '@core/services/payment.service';
 import { SweetAlertService } from '@core/services/sweet-alert.service';
 import { OrderService } from '@core/services/order.service';
+import { StorageService } from '@core/services/storage.service';
+import { ImageValidationService } from '@core/services/image-validation.service';
 import type {
   Order,
   OrderItem,
@@ -25,7 +28,11 @@ import type {
   OrderDeliverySelection,
 } from '@core/models/order.model';
 import { StoreConfigService } from '@core/services/store-config.service';
-import type { StorePickupLocation, DeliveryMethodConfig } from '@core/models/store-config.model';
+import type {
+  StorePickupLocation,
+  DeliveryMethodConfig,
+  BankTransferConfig,
+} from '@core/models/store-config.model';
 import { DEFAULT_DELIVERY_METHOD_CONFIG } from '@core/models/store-config.model';
 
 @Component({
@@ -43,10 +50,56 @@ export class Checkout implements OnInit {
   private sweetAlertService = inject(SweetAlertService);
   private orderService = inject(OrderService);
   private storeConfigService = inject(StoreConfigService);
+  private storageService = inject(StorageService);
+  private imageValidationService = inject(ImageValidationService);
   private router = inject(Router);
 
   checkoutForm!: FormGroup;
   isProcessingPayment = signal(false);
+
+  // Payment method & discount signals
+  readonly storeConfig = this.storeConfigService.storeConfig;
+  readonly bankTransferConfig = computed<BankTransferConfig | undefined>(
+    () => this.storeConfigService.storeConfig()?.paymentMethods?.bankTransfer,
+  );
+  readonly isBankTransferEnabled = computed<boolean>(() =>
+    Boolean(this.bankTransferConfig()?.enabled),
+  );
+  selectedPaymentMethod = signal<'mercadopago' | 'transfer'>(
+    this.storeConfigService.storeConfig()?.paymentMethods?.bankTransfer?.enabled
+      ? 'transfer'
+      : 'mercadopago',
+  );
+  private paymentMethodManuallySelected = false;
+
+  readonly subtotal = computed<number>(() => this.cartService.cart().total);
+  readonly hasTransferDiscount = computed<boolean>(() =>
+    Boolean(
+      this.bankTransferConfig()?.enabled &&
+      (this.bankTransferConfig()?.discountPercentage ?? 0) > 0,
+    ),
+  );
+  readonly transferDiscountPercentage = computed<number>(() =>
+    this.hasTransferDiscount() ? (this.bankTransferConfig()?.discountPercentage ?? 0) : 0,
+  );
+  readonly transferSavingsAmount = computed<number>(() => {
+    const pct = this.transferDiscountPercentage();
+    return pct > 0 ? Math.round(((this.subtotal() * pct) / 100) * 100) / 100 : 0;
+  });
+  readonly discountAmount = computed<number>(() =>
+    this.selectedPaymentMethod() === 'transfer' && this.hasTransferDiscount()
+      ? this.transferSavingsAmount()
+      : 0,
+  );
+  readonly finalTotal = computed<number>(() =>
+    Math.max(0, Math.round((this.subtotal() - this.discountAmount()) * 100) / 100),
+  );
+
+  // Bank transfer UX state (copy alias & receipt upload)
+  readonly aliasCopied = signal<boolean>(false);
+  readonly receiptFile = signal<File | null>(null);
+  readonly receiptPreviewUrl = signal<string | null>(null);
+  readonly receiptError = signal<string | null>(null);
 
   // Delivery method signals
   readonly deliveryConfig = computed<DeliveryMethodConfig>(
@@ -88,6 +141,18 @@ export class Checkout implements OnInit {
         // Initialize selected pickup location ID if null and locations exist
         if (!this.selectedPickupLocationId() && locations.length > 0) {
           this.selectedPickupLocationId.set(locations[0].id);
+        }
+
+        // Sync payment method with store configuration
+        const transferEnabled = this.isBankTransferEnabled();
+        if (!transferEnabled && this.selectedPaymentMethod() === 'transfer') {
+          this.selectedPaymentMethod.set('mercadopago');
+        } else if (
+          transferEnabled &&
+          !this.paymentMethodManuallySelected &&
+          this.selectedPaymentMethod() !== 'transfer'
+        ) {
+          this.selectedPaymentMethod.set('transfer');
         }
       },
       { allowSignalWrites: true },
@@ -140,6 +205,63 @@ export class Checkout implements OnInit {
 
   setPickupLocation(locationId: string): void {
     this.selectedPickupLocationId.set(locationId);
+  }
+
+  setPaymentMethod(method: 'mercadopago' | 'transfer'): void {
+    this.paymentMethodManuallySelected = true;
+    this.selectedPaymentMethod.set(method);
+  }
+
+  async copyAlias(alias?: string): Promise<void> {
+    const cleanAlias = alias?.trim();
+    if (!cleanAlias) {
+      return;
+    }
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(cleanAlias);
+      }
+      this.aliasCopied.set(true);
+      setTimeout(() => {
+        this.aliasCopied.set(false);
+      }, 2000);
+    } catch (error) {
+      console.warn('No se pudo copiar el alias al portapapeles:', error);
+    }
+  }
+
+  onReceiptFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const validation = this.imageValidationService.validateReceiptImage(file);
+    if (!validation.valid) {
+      const errorMsg = validation.errors.join(' ');
+      this.receiptError.set(errorMsg);
+      this.receiptFile.set(null);
+      this.receiptPreviewUrl.set(null);
+      this.sweetAlertService.error('Comprobante inválido', errorMsg);
+      input.value = '';
+      return;
+    }
+
+    this.receiptError.set(null);
+    this.receiptFile.set(file);
+
+    const reader = new FileReader();
+    reader.onload = (e): void => {
+      this.receiptPreviewUrl.set((e.target?.result as string) ?? null);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removeReceiptFile(): void {
+    this.receiptFile.set(null);
+    this.receiptPreviewUrl.set(null);
+    this.receiptError.set(null);
   }
 
   private updateShippingValidators(isHomeDelivery: boolean): void {
@@ -217,7 +339,31 @@ export class Checkout implements OnInit {
         return;
       }
 
-      orderId = await this.createOrder(cartAfter.items, cartAfter.total);
+      let uploadedReceiptUrl: string | undefined;
+      const isTransfer = this.selectedPaymentMethod() === 'transfer';
+
+      if (isTransfer && this.receiptFile()) {
+        const upload = this.storageService.uploadFile(this.receiptFile()!, 'receipts');
+        uploadedReceiptUrl = await firstValueFrom(upload.downloadUrl$);
+      }
+
+      orderId = await this.createOrder(cartAfter.items, this.finalTotal(), uploadedReceiptUrl);
+
+      if (isTransfer) {
+        if (typeof this.paymentService.confirmBankTransferOrder === 'function') {
+          await this.paymentService.confirmBankTransferOrder(
+            orderId,
+            cartAfter.items,
+            uploadedReceiptUrl,
+          );
+        }
+        this.sweetAlertService.close?.();
+        this.isProcessingPayment.set(false);
+        void this.router.navigate(['/order-confirmation', orderId], {
+          queryParams: { status: 'approved', method: 'transfer' },
+        });
+        return;
+      }
 
       const contactValue = this.checkoutForm.get('contactInfo')?.value;
       const payer = {
@@ -261,7 +407,11 @@ export class Checkout implements OnInit {
     }
   }
 
-  private async createOrder(cartItems: CartItem[], total: number): Promise<string> {
+  private async createOrder(
+    cartItems: CartItem[],
+    total: number,
+    receiptUrl?: string,
+  ): Promise<string> {
     const { contactInfo, shippingInfo } = this.checkoutForm.value;
 
     const orderItems: OrderItem[] = cartItems.map((item) => ({
@@ -276,6 +426,11 @@ export class Checkout implements OnInit {
 
     const isPickup = this.selectedDeliveryType() === 'store_pickup';
     const pickupLoc = this.selectedPickupLocation();
+    const paymentMethod = this.selectedPaymentMethod();
+    const isTransfer = paymentMethod === 'transfer';
+    const subtotal = this.subtotal();
+    const discountPercentage = isTransfer ? this.transferDiscountPercentage() : 0;
+    const discountAmount = isTransfer ? this.discountAmount() : 0;
 
     const deliverySelection: OrderDeliverySelection = {
       type: this.selectedDeliveryType(),
@@ -293,7 +448,12 @@ export class Checkout implements OnInit {
       clientEmail: contactInfo.email,
       clientPhone: contactInfo.phone,
       orderDate: new Date(),
+      subtotal,
+      discountPercentage,
+      discountAmount,
       total,
+      paymentMethod,
+      receiptUrl,
       status: 'pending',
       items: orderItems,
       shippingAddress:
@@ -313,8 +473,11 @@ export class Checkout implements OnInit {
               country: 'Argentina',
             },
       paymentDetails: {
-        paymentMethod: 'Mercado Pago',
-        subtotal: total,
+        paymentMethod,
+        subtotal,
+        discountPercentage,
+        discountAmount,
+        receiptUrl,
         shippingCost: 0,
         taxAmount: 0,
       },

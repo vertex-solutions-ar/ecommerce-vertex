@@ -95,4 +95,60 @@ export class PaymentService {
       };
     }
   }
+
+  async confirmBankTransferOrder(
+    orderId: string,
+    items: CartItem[],
+    receiptUrl?: string,
+  ): Promise<{ success: boolean; total?: number; error?: string }> {
+    try {
+      const preferenceItems = items.map((item) => ({
+        productId: item.productId,
+        variantId: item.variantId,
+        title: item.name,
+        quantity: item.quantity,
+        unit_price: Number(item.price),
+      }));
+
+      const res = await fetch(`${environment.api.cloudFunctionsUrl}/confirmBankTransferOrder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: {
+            external_reference: orderId,
+            items: preferenceItems,
+            receiptUrl,
+            projectId:
+              (typeof globalThis !== 'undefined' &&
+                ((globalThis as Record<string, unknown>)[
+                  '__VERTEX_FIREBASE_PROJECT_ID__'
+                ] as string)) ||
+              environment.firebaseConfig.projectId,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return {
+          success: false,
+          error: body?.error?.message ?? `HTTP ${res.status}`,
+        };
+      }
+
+      const json = await res.json();
+      return {
+        success: true,
+        total: json?.result?.total,
+      };
+    } catch (error: unknown) {
+      console.warn(
+        'No se pudo validar transferencia en servidor (continuando con orden local):',
+        error,
+      );
+      return {
+        success: true,
+      };
+    }
+  }
 }

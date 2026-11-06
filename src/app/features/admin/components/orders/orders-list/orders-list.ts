@@ -177,6 +177,14 @@ export class OrdersList implements OnInit {
     };
   }
 
+  isTransferOrder(order: Order): boolean {
+    return order.paymentMethod === 'transfer' || order.paymentDetails?.paymentMethod === 'transfer';
+  }
+
+  getTransferDiscountPercentage(order: Order): number {
+    return order.discountPercentage ?? order.paymentDetails?.discountPercentage ?? 0;
+  }
+
   loadOrders(): void {
     this.isLoading.set(true);
     this._orderService

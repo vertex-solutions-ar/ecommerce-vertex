@@ -1,4 +1,13 @@
-import { Component, inject, signal, computed, DestroyRef, effect } from '@angular/core';
+import {
+  Component,
+  inject,
+  signal,
+  computed,
+  DestroyRef,
+  effect,
+  ViewChild,
+  type ElementRef,
+} from '@angular/core';
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import type { FormGroup } from '@angular/forms';
@@ -37,7 +46,23 @@ export class StoreConfig {
   logoUploadProgress = signal<number>(0);
   isUploadingLogo = signal<boolean>(false);
 
-  form: FormGroup = createStoreConfigForm(this.fb);
+  @ViewChild('discountInput') discountInput?: ElementRef<HTMLInputElement>;
+
+  form: FormGroup = this.initForm();
+
+  get configForm(): FormGroup {
+    return this.form;
+  }
+
+  initForm(): FormGroup {
+    return createStoreConfigForm(this.fb);
+  }
+
+  onBankTransferToggle(enabled: boolean): void {
+    if (enabled) {
+      setTimeout(() => this.discountInput?.nativeElement.focus(), 50);
+    }
+  }
 
   readonly formValue = toSignal(this.form.valueChanges, { initialValue: this.form.value });
 
@@ -91,8 +116,12 @@ export class StoreConfig {
 
   constructor() {
     effect(() => {
-      this.populateFormFromConfig(this.storeConfigService.storeConfig());
+      this.patchForm(this.storeConfigService.storeConfig());
     });
+  }
+
+  patchForm(cfg: StoreConfigData | null): void {
+    this.populateFormFromConfig(cfg);
   }
 
   private populateFormFromConfig(cfg: StoreConfigData | null): void {
@@ -100,6 +129,7 @@ export class StoreConfig {
 
     this.patchGeneralSettings(cfg, currentTenant);
     this.patchBrandingAndSocial(cfg);
+    this.patchPaymentMethods(cfg);
   }
 
   private patchGeneralSettings(cfg: StoreConfigData | null, currentTenant: string): void {
@@ -146,6 +176,24 @@ export class StoreConfig {
         whatsApp: cfg?.contact?.whatsApp ?? '',
         instagram: cfg?.contact?.instagram ?? '',
         facebook: cfg?.contact?.facebook ?? '',
+      },
+    });
+  }
+
+  private patchPaymentMethods(cfg: StoreConfigData | null): void {
+    const bankTransfer = cfg?.paymentMethods?.bankTransfer;
+    this.form.patchValue({
+      paymentMethods: {
+        bankTransfer: {
+          enabled: bankTransfer?.enabled ?? false,
+          discountPercentage: bankTransfer?.discountPercentage ?? 0,
+          bankName: bankTransfer?.bankName ?? '',
+          accountHolder: bankTransfer?.accountHolder ?? '',
+          cbu: bankTransfer?.cbu ?? '',
+          alias: bankTransfer?.alias ?? '',
+          cuit: bankTransfer?.cuit ?? '',
+          instructions: bankTransfer?.instructions ?? '',
+        },
       },
     });
   }
@@ -255,9 +303,22 @@ export class StoreConfig {
     this.isSubmitting.set(true);
     try {
       const currentConfig = this.storeConfigService.storeConfig() ?? ({} as StoreConfigData);
+      const rawValue = this.form.getRawValue();
       const updatedConfig: StoreConfigData = {
         ...currentConfig,
-        ...(this.form.getRawValue() as Record<string, unknown>),
+        ...(rawValue as Record<string, unknown>),
+        paymentMethods: {
+          ...currentConfig.paymentMethods,
+          bankTransfer: {
+            ...currentConfig.paymentMethods?.bankTransfer,
+            ...rawValue.paymentMethods?.bankTransfer,
+            enabled: Boolean(rawValue.paymentMethods?.bankTransfer?.enabled),
+            discountPercentage:
+              rawValue.paymentMethods?.bankTransfer?.discountPercentage ??
+              currentConfig.paymentMethods?.bankTransfer?.discountPercentage ??
+              0,
+          },
+        },
       } as StoreConfigData;
 
       await this.storeConfigService.saveConfig(updatedConfig);

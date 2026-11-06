@@ -33,6 +33,47 @@
   font-size: 0.75rem;
 }
 
+.receipt-attachment-viewer {
+  border-color: #e2e8f0 !important;
+  background: #f8fafc !important;
+}
+
+.receipt-attachment-img {
+  max-height: 280px;
+  object-fit: contain;
+  border: 1px solid #cbd5e1;
+}
+
+.financial-verification-box {
+  background: #f8fafc;
+  border-color: #e2e8f0 !important;
+}
+
+.btn-confirm-payment {
+  background: #10b981;
+  color: #ffffff;
+  border: 1px solid #059669;
+  font-weight: 700;
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: #059669;
+    color: #ffffff;
+  }
+
+  &:focus {
+    outline: 3px solid rgba(16, 185, 129, 0.45);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+}
+
 /* ─── Media Print Styles ─── */
 @media print {
   body * {

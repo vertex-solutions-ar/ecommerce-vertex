@@ -322,6 +322,160 @@
                 </div>
               </div>
             </div>
+
+            <!-- 3. Métodos de Pago: Transferencia Bancaria -->
+            <div class="glass-card card-regional mb-4" formGroupName="paymentMethods">
+              <div class="card-header border-0 fw-bold d-flex align-items-center">
+                <i class="bi bi-bank me-2 text-success"></i> Transferencia Bancaria
+              </div>
+              <div class="card-body" formGroupName="bankTransfer">
+                <div class="glass-switches-container mb-4">
+                  <div class="form-check form-switch custom-glass-switch m-0">
+                    <label class="form-check-label text-soft fw-semibold" for="bankTransferEnabled">
+                      Habilitar pago por Transferencia Bancaria
+                      <small class="d-block text-muted fw-normal mt-1">
+                        Permite que tus clientes abonen transfiriendo a tu cuenta bancaria o
+                        billetera virtual.
+                      </small>
+                    </label>
+                    <input
+                      #bankTransferEnabled
+                      id="bankTransferEnabled"
+                      type="checkbox"
+                      role="switch"
+                      class="form-check-input"
+                      formControlName="enabled"
+                      (change)="onBankTransferToggle($any($event.target).checked)"
+                    />
+                  </div>
+                </div>
+
+                @if (
+                  formValue()?.paymentMethods?.bankTransfer?.enabled ||
+                  configForm.get('paymentMethods.bankTransfer.enabled')?.value
+                ) {
+                  <div class="row g-4">
+                    <!-- Descuento por Transferencia (%) -->
+                    <div class="col-md-6">
+                      <label class="form-label text-label" for="discountPercentageInput">
+                        Descuento por Transferencia (%)
+                      </label>
+                      <div class="input-group">
+                        <span class="input-group-text">%</span>
+                        <input
+                          #discountInput
+                          id="discountPercentageInput"
+                          type="number"
+                          min="0"
+                          max="100"
+                          formControlName="discountPercentage"
+                          class="form-control glass-input"
+                          placeholder="0"
+                        />
+                      </div>
+                      <div class="form-text text-muted text-xs mt-1">
+                        Si es 0 no se aplicará descuento pero sí se mostrará la opción de
+                        transferencia, y si es mayor a 0 se destacará un badge de ahorro en el
+                        checkout.
+                      </div>
+                    </div>
+
+                    <!-- Entidad Bancaria / Billetera -->
+                    <div class="col-md-6">
+                      <label class="form-label text-label" for="bankNameInput">
+                        Banco o Billetera Virtual
+                      </label>
+                      <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-bank2"></i></span>
+                        <input
+                          id="bankNameInput"
+                          type="text"
+                          formControlName="bankName"
+                          class="form-control glass-input"
+                          placeholder="Ej: Banco Galicia / Mercado Pago"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Titular de la Cuenta -->
+                    <div class="col-md-6">
+                      <label class="form-label text-label" for="accountHolderInput">
+                        Titular de la Cuenta
+                      </label>
+                      <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                        <input
+                          id="accountHolderInput"
+                          type="text"
+                          formControlName="accountHolder"
+                          class="form-control glass-input"
+                          placeholder="Nombre y Apellido o Razón Social"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- CUIT / CUIL -->
+                    <div class="col-md-6">
+                      <label class="form-label text-label" for="cuitInput"> CUIT / CUIL </label>
+                      <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-card-heading"></i></span>
+                        <input
+                          id="cuitInput"
+                          type="text"
+                          formControlName="cuit"
+                          class="form-control glass-input"
+                          placeholder="Ej: 20-12345678-9"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- CBU / CVU -->
+                    <div class="col-md-6">
+                      <label class="form-label text-label" for="cbuInput"> CBU / CVU </label>
+                      <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-hash"></i></span>
+                        <input
+                          id="cbuInput"
+                          type="text"
+                          formControlName="cbu"
+                          class="form-control glass-input"
+                          placeholder="0000000000000000000000"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Alias -->
+                    <div class="col-md-6">
+                      <label class="form-label text-label" for="aliasInput"> Alias </label>
+                      <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-at"></i></span>
+                        <input
+                          id="aliasInput"
+                          type="text"
+                          formControlName="alias"
+                          class="form-control glass-input"
+                          placeholder="mi.tienda.mp"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Instrucciones adicionales -->
+                    <div class="col-12">
+                      <label class="form-label text-label" for="bankInstructionsTextarea">
+                        Instrucciones adicionales para el cliente
+                      </label>
+                      <textarea
+                        id="bankInstructionsTextarea"
+                        rows="2"
+                        formControlName="instructions"
+                        class="form-control glass-input glass-textarea"
+                        placeholder="Ej: Enviá el comprobante por WhatsApp indicando tu número de pedido."
+                      ></textarea>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
           </div>
         </div>
 
