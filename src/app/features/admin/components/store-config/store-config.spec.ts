@@ -1,5 +1,5 @@
 import type { ComponentFixture } from '@angular/core/testing';
-import { TestBed } from '@angular/core/testing';
+import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import type { WritableSignal } from '@angular/core';
 import { signal } from '@angular/core';
@@ -396,6 +396,85 @@ describe('StoreConfig', () => {
 
       const icon = button.query(By.css('i.bi-check2-circle'));
       expect(icon.nativeElement.classList.contains('d-none')).toBeTrue();
+    });
+  });
+
+  describe('Bank Transfer Discount Configuration', () => {
+    it('should initialize discountPercentage control with 0 and min(0)/max(100) validators', () => {
+      const ctrl = component.form.get('paymentMethods.bankTransfer.discountPercentage');
+      expect(ctrl).toBeTruthy();
+      expect(ctrl?.value).toBe(0);
+
+      ctrl?.setValue(-5);
+      expect(ctrl?.valid).toBeFalse();
+
+      ctrl?.setValue(105);
+      expect(ctrl?.valid).toBeFalse();
+
+      ctrl?.setValue(10);
+      expect(ctrl?.valid).toBeTrue();
+    });
+
+    it('should patch paymentMethods.bankTransfer.discountPercentage from StoreConfig', () => {
+      mockConfigSignal.set({
+        ...mockConfig,
+        paymentMethods: {
+          bankTransfer: {
+            enabled: true,
+            discountPercentage: 15,
+            bankName: 'Banco Test',
+            alias: 'test.alias',
+          },
+        },
+      });
+      TestBed.flushEffects();
+      fixture.detectChanges();
+
+      expect(component.form.get('paymentMethods.bankTransfer.enabled')?.value).toBeTrue();
+      expect(component.form.get('paymentMethods.bankTransfer.discountPercentage')?.value).toBe(15);
+      expect(component.form.get('paymentMethods.bankTransfer.bankName')?.value).toBe('Banco Test');
+    });
+
+    it('should focus discountInput when bank transfer switch is enabled', fakeAsync(() => {
+      component.form.get('paymentMethods.bankTransfer.enabled')?.setValue(true);
+      fixture.detectChanges();
+
+      const inputEl = component.discountInput?.nativeElement;
+      expect(inputEl).toBeTruthy();
+      const focusSpy = spyOn(inputEl!, 'focus');
+
+      component.onBankTransferToggle(true);
+      tick(50);
+
+      expect(focusSpy).toHaveBeenCalled();
+
+      focusSpy.calls.reset();
+      component.onBankTransferToggle(false);
+      tick(50);
+      expect(focusSpy).not.toHaveBeenCalled();
+    }));
+
+    it('should compute liveOgTitle, liveOgDescription, and liveOgImageUrl across custom and fallback branches', () => {
+      component.form.patchValue({
+        ogTitle: 'Título OG Personalizado',
+        ogDescription: 'Descripción OG Personalizada',
+        ogImageUrl: 'https://example.com/og.jpg',
+      });
+      expect(component.liveOgTitle()).toBe('Título OG Personalizado');
+      expect(component.liveOgDescription()).toBe('Descripción OG Personalizada');
+      expect(component.liveOgImageUrl()).toBe('https://example.com/og.jpg');
+
+      component.form.patchValue({
+        storeName: '   ',
+        logoUrl: '',
+        ogTitle: '',
+        ogDescription: '',
+        ogImageUrl: '',
+        seo: { metaDescription: '' },
+      });
+      expect(component.liveOgTitle()).toBe('Mi Tienda Online');
+      expect(component.liveOgDescription()).toContain('Visita nuestra tienda online oficial');
+      expect(component.liveOgImageUrl()).toBe('');
     });
   });
 });

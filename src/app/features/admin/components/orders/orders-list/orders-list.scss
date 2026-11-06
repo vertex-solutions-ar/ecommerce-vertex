@@ -476,6 +476,21 @@ td.order-total {
   }
 }
 
+.badge-transfer {
+  padding: 0.2rem 0.55rem;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7 !important;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
 .btn-glass-primary,
 .btn-glass-danger {
   display: inline-flex;
