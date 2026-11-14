@@ -141,57 +141,113 @@
         </table>
       </div>
 
-      <!-- 4. Desglose Financiero -->
+      <!-- 3.5. Visor de Comprobante Adjunto (si existe) -->
+      @if (receiptUrl) {
+        <div class="receipt-attachment-viewer my-3 p-3 rounded border bg-light d-print-none">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="text-uppercase text-muted fw-bold small mb-0">
+              <i class="bi bi-file-earmark-image me-1 text-primary" aria-hidden="true"></i>
+              Comprobante de Transferencia Adjunto
+            </h6>
+            <a
+              [href]="receiptUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn btn-sm btn-outline-primary"
+            >
+              <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>
+              Abrir original
+            </a>
+          </div>
+          <div class="text-center">
+            <img
+              [src]="receiptUrl"
+              alt="Comprobante de transferencia adjunto"
+              class="img-fluid rounded receipt-attachment-img"
+            />
+          </div>
+        </div>
+      }
+
+      <!-- 4. Resumen Financiero y Desglose a Verificar -->
       <div class="row justify-content-end my-3">
-        <div class="col-12 col-md-6">
-          <table class="table table-borderless table-sm mb-0 summary-table">
-            <tbody>
-              <tr>
-                <td class="text-muted">Subtotal de Productos:</td>
-                <td class="text-end fw-semibold text-dark">
-                  {{
-                    order.paymentDetails?.subtotal || (order.items | sumItems: 'price' : 'quantity')
-                      | currency: currencyCode() : currencySymbol()
-                  }}
-                </td>
-              </tr>
-              @if (order.paymentDetails?.shippingCost) {
+        <div class="col-12 col-md-7">
+          <div class="financial-verification-box p-3 rounded border">
+            <h6 class="text-uppercase text-muted fw-bold small mb-2">
+              <i class="bi bi-shield-check me-1 text-success" aria-hidden="true"></i>
+              Resumen Financiero a Verificar
+            </h6>
+            <table class="table table-borderless table-sm mb-0 summary-table">
+              <tbody>
                 <tr>
-                  <td class="text-muted">Costo de Envío:</td>
+                  <td class="text-muted">Subtotal:</td>
                   <td class="text-end fw-semibold text-dark">
                     {{
-                      order.paymentDetails?.shippingCost
+                      order.subtotal ||
+                        order.paymentDetails?.subtotal ||
+                        (order.items | sumItems: 'price' : 'quantity')
                         | currency: currencyCode() : currencySymbol()
                     }}
                   </td>
                 </tr>
-              }
-              @if (order.paymentDetails?.taxAmount) {
-                <tr>
-                  <td class="text-muted">Impuestos:</td>
-                  <td class="text-end fw-semibold text-dark">
-                    {{
-                      order.paymentDetails?.taxAmount | currency: currencyCode() : currencySymbol()
-                    }}
+                @if (order.discountAmount || discountAmount > 0) {
+                  <tr class="discount-row">
+                    <td class="text-success fw-semibold">
+                      Descuento por Transferencia
+                      @if (discountPercentage > 0) {
+                        <span class="badge bg-success-subtle text-success ms-1">
+                          {{ discountPercentage }}% OFF
+                        </span>
+                      }
+                      :
+                    </td>
+                    <td class="text-end fw-bold text-success">
+                      -{{ discountAmount | currency: currencyCode() : currencySymbol() }}
+                      @if (discountPercentage > 0) {
+                        <span class="small">({{ discountPercentage }}% OFF)</span>
+                      }
+                    </td>
+                  </tr>
+                }
+                @if (order.paymentDetails?.shippingCost) {
+                  <tr>
+                    <td class="text-muted">Costo de Envío:</td>
+                    <td class="text-end fw-semibold text-dark">
+                      {{
+                        order.paymentDetails?.shippingCost
+                          | currency: currencyCode() : currencySymbol()
+                      }}
+                    </td>
+                  </tr>
+                }
+                @if (order.paymentDetails?.taxAmount) {
+                  <tr>
+                    <td class="text-muted">Impuestos:</td>
+                    <td class="text-end fw-semibold text-dark">
+                      {{
+                        order.paymentDetails?.taxAmount
+                          | currency: currencyCode() : currencySymbol()
+                      }}
+                    </td>
+                  </tr>
+                }
+                @if (order.paymentMethod || order.paymentDetails?.paymentMethod) {
+                  <tr>
+                    <td class="text-muted">Medio de Pago:</td>
+                    <td class="text-end text-secondary small">
+                      {{ order.paymentDetails?.paymentMethod || order.paymentMethod }}
+                    </td>
+                  </tr>
+                }
+                <tr class="border-top border-2 border-dark">
+                  <td class="fw-bold fs-6 text-dark pt-2">Total transferido esperado:</td>
+                  <td class="text-end fw-bold fs-4 text-dark pt-2">
+                    {{ order.total | currency: currencyCode() : currencySymbol() }}
                   </td>
                 </tr>
-              }
-              @if (order.paymentDetails?.paymentMethod) {
-                <tr>
-                  <td class="text-muted">Medio de Pago:</td>
-                  <td class="text-end text-secondary small">
-                    {{ order.paymentDetails?.paymentMethod }}
-                  </td>
-                </tr>
-              }
-              <tr class="border-top border-2 border-dark">
-                <td class="fw-bold fs-5 text-dark pt-2">Total Final:</td>
-                <td class="text-end fw-bold fs-4 text-dark pt-2">
-                  {{ order.total | currency: currencyCode() : currencySymbol() }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -206,11 +262,34 @@
     </div>
   </div>
 
-  <div class="modal-footer border-top border-light-subtle d-print-none">
+  <div
+    class="modal-footer border-top border-light-subtle d-print-none d-flex justify-content-between flex-wrap gap-2"
+  >
     <button type="button" class="btn-glass-secondary" (click)="close()">Cerrar</button>
-    <button type="button" class="btn-glass-primary" (click)="printReceipt()">
-      <i class="bi bi-printer me-2" aria-hidden="true"></i> Imprimir Comprobante
-    </button>
+    <div class="d-flex align-items-center gap-2">
+      <button type="button" class="btn-glass-secondary" (click)="printReceipt()">
+        <i class="bi bi-printer me-2" aria-hidden="true"></i> Imprimir Comprobante
+      </button>
+      <button
+        #confirmBtn
+        type="button"
+        class="btn-glass-primary btn-confirm-payment"
+        [disabled]="isConfirming()"
+        (click)="confirmPayment()"
+      >
+        @if (isConfirming()) {
+          <span
+            class="spinner-border spinner-border-sm me-2"
+            role="status"
+            aria-hidden="true"
+          ></span>
+          Confirmando...
+        } @else {
+          <i class="bi bi-check2-circle me-2" aria-hidden="true"></i>
+          Confirmar Pago
+        }
+      </button>
+    </div>
   </div>
 } @else {
   <div class="modal-header">

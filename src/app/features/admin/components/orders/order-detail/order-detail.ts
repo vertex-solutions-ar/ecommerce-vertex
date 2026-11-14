@@ -103,9 +103,29 @@ export class OrderDetail implements OnInit {
     return order.deliverySelection?.type === 'store_pickup';
   }
 
+  isTransferOrder(order: Order): boolean {
+    return order.paymentMethod === 'transfer' || order.paymentDetails?.paymentMethod === 'transfer';
+  }
+
+  hasReceipt(order: Order): boolean {
+    return Boolean(order.receiptUrl ?? order.paymentDetails?.receiptUrl);
+  }
+
+  getDiscountAmount(order: Order): number {
+    return order.discountAmount ?? order.paymentDetails?.discountAmount ?? 0;
+  }
+
+  getDiscountPercentage(order: Order): number {
+    return order.discountPercentage ?? order.paymentDetails?.discountPercentage ?? 0;
+  }
+
   generateReceipt(order: Order): void {
     this.receiptOrder = order;
     this.showReceipt = true;
+  }
+
+  onPaymentConfirmed(status: OrderStatus): void {
+    this.currentStatus = status;
   }
 
   closeReceipt(): void {
