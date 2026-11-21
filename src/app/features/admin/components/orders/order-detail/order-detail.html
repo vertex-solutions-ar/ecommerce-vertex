@@ -39,10 +39,42 @@
                   </p>
                 </div>
                 <div class="col-md-6">
-                  <p class="mb-3 text-soft">
-                    <strong class="text-label fw-semibold me-2">Método de Pago:</strong>
-                    {{ order.paymentDetails?.paymentMethod || 'N/A' }}
-                  </p>
+                  <div class="mb-3 text-soft d-flex align-items-center flex-wrap gap-2">
+                    <strong class="text-label fw-semibold">Método de Pago:</strong>
+                    @if (isTransferOrder(order)) {
+                      <span class="badge-transfer">
+                        <i class="bi bi-bank me-1" aria-hidden="true"></i>
+                        Transferencia Bancaria
+                        @if (getDiscountPercentage(order) > 0) {
+                          ({{ getDiscountPercentage(order) }}% OFF)
+                        }
+                      </span>
+                      <button
+                        type="button"
+                        class="badge-receipt-action"
+                        [class.badge-receipt-action--attached]="hasReceipt(order)"
+                        [class.badge-receipt-action--missing]="!hasReceipt(order)"
+                        (click)="generateReceipt(order)"
+                      >
+                        <i
+                          class="bi me-1"
+                          [ngClass]="
+                            hasReceipt(order) ? 'bi-file-earmark-check' : 'bi-file-earmark-text'
+                          "
+                          aria-hidden="true"
+                        ></i>
+                        @if (hasReceipt(order)) {
+                          Comprobante adjunto · Ver comprobante
+                        } @else {
+                          Sin comprobante adjunto · Verificar orden
+                        }
+                      </button>
+                    } @else {
+                      <span>{{
+                        order.paymentDetails?.paymentMethod || order.paymentMethod || 'N/A'
+                      }}</span>
+                    }
+                  </div>
                   <div class="d-flex align-items-center flex-wrap gap-2">
                     <strong class="text-label fw-semibold">Estado:</strong>
                     <select
@@ -224,12 +256,27 @@
                           <td class="text-label">Subtotal:</td>
                           <td class="text-end text-soft">
                             {{
-                              order.paymentDetails?.subtotal ||
+                              order.subtotal ||
+                                order.paymentDetails?.subtotal ||
                                 (order.items | sumItems: 'price' : 'quantity')
                                 | currency: 'ARS' : '$'
                             }}
                           </td>
                         </tr>
+                        @if (getDiscountAmount(order) > 0) {
+                          <tr class="discount-row">
+                            <td class="text-discount fw-semibold">
+                              Descuento por Transferencia
+                              @if (getDiscountPercentage(order) > 0) {
+                                ({{ getDiscountPercentage(order) }}% OFF)
+                              }
+                              :
+                            </td>
+                            <td class="text-end text-discount fw-semibold">
+                              -{{ getDiscountAmount(order) | currency: 'ARS' : '$' }}
+                            </td>
+                          </tr>
+                        }
                         <tr>
                           <td class="text-label">Costo de Envío:</td>
                           <td class="text-end text-soft">
@@ -309,7 +356,11 @@
 @if (showReceipt && receiptOrder) {
   <div class="modal-overlay" (click)="closeReceipt()">
     <div class="modal-wrapper" (click)="$event.stopPropagation()">
-      <app-receipt-modal [order]="receiptOrder" (closeModal)="closeReceipt()"></app-receipt-modal>
+      <app-receipt-modal
+        [order]="receiptOrder"
+        (paymentConfirmed)="onPaymentConfirmed($event)"
+        (closeModal)="closeReceipt()"
+      ></app-receipt-modal>
     </div>
   </div>
 }
