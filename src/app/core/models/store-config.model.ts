@@ -109,6 +109,21 @@ export const DEFAULT_STORE_APPEARANCE: StoreAppearanceConfig = {
   header: DEFAULT_HEADER_APPEARANCE,
 };
 
+export interface BankTransferConfig {
+  enabled: boolean;
+  discountPercentage?: number;
+  bankName?: string;
+  accountHolder?: string;
+  cbu?: string;
+  alias?: string;
+  cuit?: string;
+  instructions?: string;
+}
+
+export interface PaymentMethodsConfig {
+  bankTransfer?: BankTransferConfig;
+}
+
 export interface StoreConfig {
   readonly tenantId: string;
   storeId: string;
@@ -147,6 +162,7 @@ export interface StoreConfig {
       validationStatus?: string;
     };
   };
+  paymentMethods?: PaymentMethodsConfig;
   contact: {
     phone: string;
     email: string;
@@ -206,6 +222,18 @@ export const DEFAULT_STORE_CONFIG: StoreConfig = {
   },
   payments: {
     mercadoPagoPublicKey: '',
+  },
+  paymentMethods: {
+    bankTransfer: {
+      enabled: false,
+      discountPercentage: 0,
+      bankName: '',
+      accountHolder: '',
+      cbu: '',
+      alias: '',
+      cuit: '',
+      instructions: '',
+    },
   },
   contact: {
     phone: '',

@@ -46,6 +46,9 @@ export const PaymentDetailsSchema = z.object({
   shippingCost: z.number(),
   taxAmount: z.number(),
   subtotal: z.number(),
+  discountPercentage: z.number().optional(),
+  discountAmount: z.number().optional(),
+  receiptUrl: z.string().optional(),
   paymentId: z.string().optional(),
 });
 export type PaymentDetails = z.infer<typeof PaymentDetailsSchema>;
@@ -58,7 +61,12 @@ export const OrderSchema = z.object({
   clientEmail: z.string().optional(),
   clientPhone: z.string().optional(),
   orderDate: z.any(),
+  subtotal: z.number().optional(),
+  discountPercentage: z.number().optional(),
+  discountAmount: z.number().optional(),
   total: z.number(),
+  paymentMethod: z.enum(['mercadopago', 'transfer']).or(z.string()).optional(),
+  receiptUrl: z.string().optional(),
   status: OrderStatusSchema,
   items: z.array(OrderItemSchema),
   shippingAddress: ShippingAddressSchema,

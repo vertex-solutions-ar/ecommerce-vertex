@@ -4,7 +4,7 @@ import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import { PaymentRequestSchema } from './core/payment.model';
 import { createPreference, getPaymentDetails } from './core/mercadopago.service';
-import { COLLECTIONS, collectionPath } from './core/config';
+import { COLLECTIONS, collectionPath, singletonDoc } from './core/config';
 import { OrderItemSchema, OrderSchema } from './core/order.model';
 import { resolveTenantDb } from './core/tenant-db';
 import { sendOrderNotificationEmailsDirect } from './notifications.functions';
@@ -23,6 +23,59 @@ function maskToken(token: string): string {
   const trimmed = token.trim();
   if (trimmed.length <= 8) return '********';
   return `${trimmed.slice(0, 4)}****${trimmed.slice(-4)}`;
+}
+
+async function resolveStoreBankTransferConfig(
+  tenantDb: FirebaseFirestore.Firestore,
+  storeId?: string,
+): Promise<{ enabled: boolean; discountPercentage: number }> {
+  const candidateIds = [
+    storeId ? singletonDoc(storeId, 'configuracion', 'store') : null,
+    'configuracion/store_store',
+    'configuracion/store',
+  ].filter((p): p is string => Boolean(p));
+
+  for (const docPath of candidateIds) {
+    const snap = await tenantDb.doc(docPath).get().catch(() => null);
+    if (snap?.exists) {
+      const data = snap.data() as Record<string, any> | undefined;
+      const bankTransfer = data?.['paymentMethods']?.['bankTransfer'] as
+        | Record<string, any>
+        | undefined;
+      const enabled = Boolean(bankTransfer?.['enabled']);
+      const rawPct = Number(bankTransfer?.['discountPercentage'] ?? 0);
+      const discountPercentage =
+        enabled && Number.isFinite(rawPct) ? Math.min(100, Math.max(0, rawPct)) : 0;
+      return { enabled, discountPercentage };
+    }
+  }
+
+  return { enabled: false, discountPercentage: 0 };
+}
+
+function recalculateServerOrderTotals(
+  serverSubtotal: number,
+  paymentMethod: string,
+  bankTransferConfig: { enabled: boolean; discountPercentage: number },
+): { subtotal: number; discountPercentage: number; discountAmount: number; total: number } {
+  const subtotal = Math.max(0, Math.round(serverSubtotal * 100) / 100);
+  if (
+    paymentMethod === 'transfer' &&
+    bankTransferConfig.enabled &&
+    bankTransferConfig.discountPercentage > 0
+  ) {
+    const discountPercentage = bankTransferConfig.discountPercentage;
+    const discountAmount = Math.round(((subtotal * discountPercentage) / 100) * 100) / 100;
+    const total = Math.max(0, Math.round((subtotal - discountAmount) * 100) / 100);
+    return { subtotal, discountPercentage, discountAmount, total };
+  }
+
+  return {
+    subtotal,
+    discountPercentage: 0,
+    discountAmount: 0,
+    total: subtotal,
+  };
 }
 
 async function upsertSecret(secretId: string, payload: string): Promise<void> {
@@ -494,6 +547,22 @@ export const createPaymentPreference = onCall(
         // preferencia/link de pago. La única ventana de descuento es el webhook con
         // pago 'approved'. La orden queda PENDING_PAYMENT + stockDecremented:false.
         const storeId = (orderData as Record<string, unknown>)['storeId'] as string | undefined;
+        const serverSubtotal = serverItems.reduce(
+          (acc, it) => acc + Number(it.unit_price) * Number(it.quantity),
+          0,
+        );
+        const orderPaymentMethod = String(
+          paymentData.paymentMethod ||
+            (orderData as Record<string, unknown>)['paymentMethod'] ||
+            'mercadopago',
+        );
+        const bankTransferConfig = await resolveStoreBankTransferConfig(tenantDb, storeId);
+        const recalculated = recalculateServerOrderTotals(
+          serverSubtotal,
+          orderPaymentMethod,
+          bankTransferConfig,
+        );
+
         const mpPreference = await createPreference(
           { ...paymentData, items: serverItems },
           storeId,
@@ -503,6 +572,11 @@ export const createPaymentPreference = onCall(
         );
 
         transaction.update(orderRef, {
+          subtotal: recalculated.subtotal,
+          discountPercentage: recalculated.discountPercentage,
+          discountAmount: recalculated.discountAmount,
+          total: recalculated.total,
+          paymentMethod: orderPaymentMethod,
           mercadopago_preference_id: mpPreference.id,
           mercadopago_init_point: mpPreference.init_point,
           mercadopago_expiration_date: mpPreference.date_of_expiration
@@ -547,6 +621,114 @@ export const createPaymentPreference = onCall(
 
       throw new HttpsError('internal', `No se pudo procesar la solicitud de pago: ${errMsg || 'Error interno.'}`);
     }
+  },
+);
+
+export const confirmBankTransferOrder = onCall(
+  { cors: true, invoker: 'public' },
+  async (request) => {
+    const validationResult = PaymentRequestSchema.safeParse({
+      ...request.data,
+      paymentMethod: 'transfer',
+    });
+    if (!validationResult.success) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Los datos proporcionados para confirmar la orden por transferencia no son válidos.',
+      );
+    }
+
+    const paymentData = validationResult.data;
+    const orderId = paymentData.external_reference;
+    const tenantDb = resolveTenantDb(paymentData.projectId);
+    const orderRef = tenantDb.collection(collectionPath(COLLECTIONS.ORDERS)).doc(orderId);
+
+    const result = await tenantDb.runTransaction(async (transaction) => {
+      const orderDoc = await transaction.get(orderRef);
+      if (!orderDoc.exists) {
+        throw new HttpsError('not-found', `La orden con ID ${orderId} no fue encontrada.`);
+      }
+
+      const orderData = orderDoc.data() ?? {};
+      const storeId = orderData['storeId'] as string | undefined;
+
+      let serverSubtotal = 0;
+      for (const item of paymentData.items) {
+        const productRef = tenantDb
+          .collection(collectionPath(COLLECTIONS.PRODUCTS))
+          .doc(item.productId);
+        const hasVariant =
+          typeof item.variantId === 'string' && item.variantId.trim().length > 0;
+        const variantRef = hasVariant
+          ? productRef.collection('variants').doc(item.variantId!)
+          : null;
+
+        const [productDoc, variantDoc] = await Promise.all([
+          transaction.get(productRef),
+          variantRef ? transaction.get(variantRef) : Promise.resolve(null),
+        ]);
+
+        if (!productDoc.exists) {
+          throw new HttpsError('not-found', `Producto ${item.title} no disponible.`);
+        }
+
+        const productData = productDoc.data() ?? {};
+        const productBasePrice =
+          (productData['price'] as number | undefined) ??
+          (productData['finalPrice'] as number | undefined) ??
+          0;
+
+        let unitPrice = productBasePrice;
+        if (hasVariant) {
+          const productVariants = (Array.isArray(productData['variants'])
+            ? productData['variants']
+            : []) as Array<Record<string, any>>;
+          const embeddedVariant = productVariants.find((v) => v?.id === item.variantId);
+          const matchedVariant =
+            (variantDoc && variantDoc.exists
+              ? (variantDoc.data() as Record<string, any>)
+              : undefined) ?? embeddedVariant;
+          const variantPrice = matchedVariant?.price as number | undefined;
+          if (variantPrice != null && variantPrice > 0) {
+            unitPrice = variantPrice;
+          }
+        }
+
+        serverSubtotal += Number(unitPrice) * Number(item.quantity);
+      }
+
+      const bankTransferConfig = await resolveStoreBankTransferConfig(tenantDb, storeId);
+      const recalculated = recalculateServerOrderTotals(
+        serverSubtotal,
+        'transfer',
+        bankTransferConfig,
+      );
+
+      const receiptUrl =
+        paymentData.receiptUrl || (orderData['receiptUrl'] as string | undefined);
+
+      transaction.update(orderRef, {
+        subtotal: recalculated.subtotal,
+        discountPercentage: recalculated.discountPercentage,
+        discountAmount: recalculated.discountAmount,
+        total: recalculated.total,
+        paymentMethod: 'transfer',
+        ...(receiptUrl ? { receiptUrl } : {}),
+        'paymentDetails.paymentMethod': 'transfer',
+        'paymentDetails.subtotal': recalculated.subtotal,
+        'paymentDetails.discountPercentage': recalculated.discountPercentage,
+        'paymentDetails.discountAmount': recalculated.discountAmount,
+        ...(receiptUrl ? { 'paymentDetails.receiptUrl': receiptUrl } : {}),
+      });
+
+      return recalculated;
+    });
+
+    return {
+      success: true,
+      orderId,
+      ...result,
+    };
   },
 );
 

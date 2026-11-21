@@ -28,11 +28,16 @@ export interface ShippingAddress {
   country: string;
 }
 
+export type PaymentMethodType = 'mercadopago' | 'transfer';
+
 export interface PaymentDetails {
   paymentMethod: string;
   shippingCost: number;
   taxAmount: number;
   subtotal: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+  receiptUrl?: string;
   paymentId?: string;
 }
 
@@ -43,7 +48,12 @@ export interface Order {
   clientEmail?: string;
   clientPhone?: string;
   orderDate: Date;
+  subtotal?: number;
+  discountPercentage?: number;
+  discountAmount?: number;
   total: number;
+  paymentMethod?: PaymentMethodType | string;
+  receiptUrl?: string;
   status: OrderStatus;
   items: OrderItem[];
   shippingAddress: ShippingAddress;
