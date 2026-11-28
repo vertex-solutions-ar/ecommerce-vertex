@@ -324,6 +324,220 @@
             }
           }
         </fieldset>
+
+        <fieldset class="checkout__section">
+          <legend class="checkout__section-title">3. Medio de Pago</legend>
+
+          <div class="payment-options">
+            @if (isBankTransferEnabled()) {
+              <div
+                class="payment-radio-card payment-radio-card--featured"
+                [class.selected]="selectedPaymentMethod() === 'transfer'"
+              >
+                <button
+                  type="button"
+                  class="payment-radio-card__trigger w-100 text-start"
+                  (click)="setPaymentMethod('transfer')"
+                  [attr.aria-pressed]="selectedPaymentMethod() === 'transfer'"
+                >
+                  <div class="payment-radio-card__top">
+                    <div class="payment-radio-card__left">
+                      <span
+                        class="payment-radio-card__radio"
+                        [class.checked]="selectedPaymentMethod() === 'transfer'"
+                      ></span>
+                      <i class="bi bi-bank payment-radio-card__icon"></i>
+                      <div>
+                        <h3 class="payment-radio-card__title">Transferencia Bancaria</h3>
+                        <p class="payment-radio-card__subtitle">
+                          Transferí desde tu banco o billetera virtual
+                        </p>
+                      </div>
+                    </div>
+
+                    @if (hasTransferDiscount()) {
+                      <span class="payment-radio-card__badge badge-savings">
+                        ✨ ¡Ahorrás
+                        {{ transferSavingsAmount() | currency: 'ARS' : '$' : '1.0-2' }} ({{
+                          transferDiscountPercentage()
+                        }}% OFF)!
+                      </span>
+                    }
+                  </div>
+                </button>
+
+                @if (selectedPaymentMethod() === 'transfer') {
+                  <div class="payment-transfer-panel">
+                    <div class="payment-transfer-panel__bank-box">
+                      <div class="payment-transfer-panel__grid">
+                        @if (bankTransferConfig()?.bankName) {
+                          <div class="payment-transfer-panel__field">
+                            <span class="payment-transfer-panel__label">Banco / Billetera</span>
+                            <strong class="payment-transfer-panel__value">
+                              {{ bankTransferConfig()?.bankName }}
+                            </strong>
+                          </div>
+                        }
+                        @if (bankTransferConfig()?.accountHolder) {
+                          <div class="payment-transfer-panel__field">
+                            <span class="payment-transfer-panel__label">Titular</span>
+                            <strong class="payment-transfer-panel__value">
+                              {{ bankTransferConfig()?.accountHolder }}
+                            </strong>
+                          </div>
+                        }
+                        @if (bankTransferConfig()?.cuit) {
+                          <div class="payment-transfer-panel__field">
+                            <span class="payment-transfer-panel__label">CUIT / CUIL</span>
+                            <strong class="payment-transfer-panel__value">
+                              {{ bankTransferConfig()?.cuit }}
+                            </strong>
+                          </div>
+                        }
+                        @if (bankTransferConfig()?.cbu) {
+                          <div class="payment-transfer-panel__field">
+                            <span class="payment-transfer-panel__label">CBU / CVU</span>
+                            <strong class="payment-transfer-panel__value font-monospace">
+                              {{ bankTransferConfig()?.cbu }}
+                            </strong>
+                          </div>
+                        }
+                      </div>
+
+                      @if (bankTransferConfig()?.alias) {
+                        <div class="payment-transfer-panel__alias-box">
+                          <div>
+                            <span class="payment-transfer-panel__label d-block">Alias</span>
+                            <span class="payment-transfer-panel__alias-value">
+                              {{ bankTransferConfig()?.alias }}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            class="payment-transfer-panel__copy-btn"
+                            [class.copied]="aliasCopied()"
+                            (click)="copyAlias(bankTransferConfig()?.alias)"
+                          >
+                            @if (aliasCopied()) {
+                              <span>¡Copiado! ✓</span>
+                            } @else {
+                              <i class="bi bi-clipboard me-1"></i>
+                              <span>Copiar Alias</span>
+                            }
+                          </button>
+                        </div>
+                      }
+
+                      @if (bankTransferConfig()?.instructions) {
+                        <p class="payment-transfer-panel__instructions mb-0">
+                          <i class="bi bi-info-circle me-1"></i>
+                          {{ bankTransferConfig()?.instructions }}
+                        </p>
+                      }
+                    </div>
+
+                    <div class="payment-transfer-panel__upload">
+                      <label for="receiptFileInput" class="checkout__label mb-2">
+                        Adjuntar Comprobante de Pago (Opcional)
+                      </label>
+                      <input
+                        #receiptFileInputRef
+                        id="receiptFileInput"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        class="d-none"
+                        (change)="onReceiptFileSelected($event)"
+                      />
+
+                      @if (receiptPreviewUrl(); as previewUrl) {
+                        <div class="receipt-preview-card">
+                          <img
+                            [src]="previewUrl"
+                            alt="Vista previa del comprobante"
+                            class="receipt-preview-card__img"
+                          />
+                          <div class="receipt-preview-card__actions">
+                            <span class="receipt-preview-card__name text-truncate">
+                              {{ receiptFile()?.name || 'Comprobante adjunto' }}
+                            </span>
+                            <div class="d-flex gap-2">
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                (click)="receiptFileInputRef.click()"
+                              >
+                                Cambiar
+                              </button>
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-outline-danger"
+                                (click)="removeReceiptFile()"
+                              >
+                                Quitar
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      } @else {
+                        <div
+                          class="receipt-dropzone"
+                          role="button"
+                          tabindex="0"
+                          (click)="receiptFileInputRef.click()"
+                          (keydown.enter)="receiptFileInputRef.click()"
+                        >
+                          <i class="bi bi-cloud-arrow-up receipt-dropzone__icon"></i>
+                          <span class="receipt-dropzone__title">
+                            Hacé clic para subir la captura del comprobante
+                          </span>
+                          <span class="receipt-dropzone__hint">
+                            Formatos: JPG, PNG o WebP (máx. 5MB)
+                          </span>
+                        </div>
+                      }
+
+                      @if (receiptError()) {
+                        <div class="checkout__error mt-2">{{ receiptError() }}</div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Card de Mercado Pago -->
+            <div
+              class="payment-radio-card"
+              [class.selected]="selectedPaymentMethod() === 'mercadopago'"
+            >
+              <button
+                type="button"
+                class="payment-radio-card__trigger w-100 text-start"
+                (click)="setPaymentMethod('mercadopago')"
+                [attr.aria-pressed]="selectedPaymentMethod() === 'mercadopago'"
+              >
+                <div class="payment-radio-card__top">
+                  <div class="payment-radio-card__left">
+                    <span
+                      class="payment-radio-card__radio"
+                      [class.checked]="selectedPaymentMethod() === 'mercadopago'"
+                    ></span>
+                    <i class="bi bi-credit-card-2-front payment-radio-card__icon"></i>
+                    <div>
+                      <h3 class="payment-radio-card__title">Mercado Pago</h3>
+                      <p class="payment-radio-card__subtitle">
+                        Tarjetas de crédito, débito o dinero en cuenta
+                      </p>
+                    </div>
+                  </div>
+                  <span class="payment-radio-card__badge badge-instant">
+                    Acreditación inmediata
+                  </span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </fieldset>
       </form>
     </div>
 
@@ -331,7 +545,12 @@
       <div class="checkout__summary-card">
         <app-order-summary
           [items]="cartService.cart().items"
-          [total]="cartService.cart().total"
+          [subtotal]="subtotal()"
+          [discountPercentage]="
+            selectedPaymentMethod() === 'transfer' ? transferDiscountPercentage() : 0
+          "
+          [discountAmount]="discountAmount()"
+          [total]="finalTotal()"
         ></app-order-summary>
         <button
           type="button"
@@ -342,6 +561,8 @@
           @if (isProcessingPayment()) {
             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
             <span>Procesando pago...</span>
+          } @else if (selectedPaymentMethod() === 'transfer') {
+            <span>Confirmar Pedido por Transferencia</span>
           } @else {
             <span>Pagar con Mercado Pago</span>
           }

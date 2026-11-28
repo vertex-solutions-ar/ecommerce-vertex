@@ -10,6 +10,9 @@ import { PaymentService } from '@core/services/payment.service';
 import { SweetAlertService } from '@core/services/sweet-alert.service';
 import { OrderService } from '@core/services/order.service';
 import { StoreConfigService } from '@core/services/store-config.service';
+import { StorageService } from '@core/services/storage.service';
+import { ImageValidationService } from '@core/services/image-validation.service';
+import { of } from 'rxjs';
 import type { Cart, CartItem } from '@core/models/cart.model';
 import type { StoreConfig } from '@core/models/store-config.model';
 
@@ -21,6 +24,8 @@ describe('Checkout', () => {
   let sweetAlertServiceSpy: jasmine.SpyObj<SweetAlertService>;
   let orderServiceSpy: jasmine.SpyObj<OrderService>;
   let storeConfigServiceSpy: jasmine.SpyObj<StoreConfigService>;
+  let storageServiceSpy: jasmine.SpyObj<StorageService>;
+  let imageValidationServiceSpy: jasmine.SpyObj<ImageValidationService>;
   let router: Router;
   let mockCartSignal: WritableSignal<Cart>;
   let mockStoreConfigSignal: WritableSignal<StoreConfig | null>;
@@ -104,21 +109,30 @@ describe('Checkout', () => {
       cart: mockCartSignal,
     });
     cartServiceSpy.pruneUnavailableItems.and.returnValue(Promise.resolve([]));
-    paymentServiceSpy = jasmine.createSpyObj('PaymentService', ['initiatePayment']);
+    paymentServiceSpy = jasmine.createSpyObj('PaymentService', [
+      'initiatePayment',
+      'confirmBankTransferOrder',
+    ]);
     sweetAlertServiceSpy = jasmine.createSpyObj('SweetAlertService', [
       'loading',
       'error',
       'success',
       'warning',
+      'close',
     ]);
     orderServiceSpy = jasmine.createSpyObj('OrderService', ['createOrder', 'updateOrder']);
     storeConfigServiceSpy = jasmine.createSpyObj('StoreConfigService', [], {
       storeConfig: mockStoreConfigSignal,
     });
+    storageServiceSpy = jasmine.createSpyObj('StorageService', ['uploadFile']);
+    imageValidationServiceSpy = jasmine.createSpyObj('ImageValidationService', [
+      'validateReceiptImage',
+    ]);
 
     paymentServiceSpy.initiatePayment.and.returnValue(
       Promise.resolve({ success: false, error: 'Payment prevented in test environment' }),
     );
+    paymentServiceSpy.confirmBankTransferOrder.and.returnValue(Promise.resolve({ success: true }));
     orderServiceSpy.createOrder.and.returnValue(
       Promise.resolve({ id: 'order-999' } as unknown as ReturnType<OrderService['createOrder']>),
     );
@@ -133,6 +147,8 @@ describe('Checkout', () => {
         { provide: SweetAlertService, useValue: sweetAlertServiceSpy },
         { provide: OrderService, useValue: orderServiceSpy },
         { provide: StoreConfigService, useValue: storeConfigServiceSpy },
+        { provide: StorageService, useValue: storageServiceSpy },
+        { provide: ImageValidationService, useValue: imageValidationServiceSpy },
       ],
     }).compileComponents();
 
@@ -532,6 +548,181 @@ describe('Checkout', () => {
       TestBed.flushEffects();
 
       expect(component.deliveryConfig().enableHomeDelivery).toBeTrue();
+    });
+  });
+
+  describe('Bank Transfer & Discount Signals', () => {
+    it('should select transfer automatically and compute discountAmount and finalTotal when bankTransfer is enabled with discount', () => {
+      mockStoreConfigSignal.set({
+        ...mockConfig,
+        paymentMethods: {
+          bankTransfer: {
+            enabled: true,
+            discountPercentage: 10,
+            bankName: 'Banco Galicia',
+            alias: 'mi.tienda.mp',
+          },
+        },
+      });
+      TestBed.flushEffects();
+      fixture.detectChanges();
+
+      expect(component.selectedPaymentMethod()).toBe('transfer');
+      expect(component.hasTransferDiscount()).toBeTrue();
+      expect(component.discountAmount()).toBe(300);
+      expect(component.finalTotal()).toBe(2700);
+
+      component.setPaymentMethod('mercadopago');
+      expect(component.discountAmount()).toBe(0);
+      expect(component.finalTotal()).toBe(3000);
+    });
+
+    it('should copy alias and reset aliasCopied after 2 seconds', fakeAsync(() => {
+      if (navigator.clipboard) {
+        spyOn(navigator.clipboard, 'writeText').and.returnValue(Promise.resolve());
+      }
+      void component.copyAlias('mi.tienda.mp');
+      tick();
+      expect(component.aliasCopied()).toBeTrue();
+
+      tick(2000);
+      expect(component.aliasCopied()).toBeFalse();
+    }));
+
+    it('should upload receipt and create transfer order with discount traceability', async () => {
+      mockStoreConfigSignal.set({
+        ...mockConfig,
+        paymentMethods: {
+          bankTransfer: {
+            enabled: true,
+            discountPercentage: 10,
+            alias: 'mi.tienda.mp',
+          },
+        },
+      });
+      fixture.detectChanges();
+      TestBed.flushEffects();
+
+      const file = new File(['receipt'], 'comprobante.png', { type: 'image/png' });
+      imageValidationServiceSpy.validateReceiptImage.and.returnValue({
+        valid: true,
+        errors: [],
+      });
+      storageServiceSpy.uploadFile.and.returnValue({
+        progress$: of(100),
+        downloadUrl$: of('https://storage.example.com/receipt.png'),
+      });
+
+      component.onReceiptFileSelected({
+        target: { files: [file] },
+      } as unknown as Event);
+
+      component.checkoutForm.get('contactInfo')?.patchValue({
+        firstName: 'Ana',
+        lastName: 'Gómez',
+        email: 'ana@example.com',
+        phone: '1122334455',
+        dni: '12345678',
+      });
+      component.setDeliveryType('store_pickup');
+
+      const navigateSpy = spyOn(router, 'navigate');
+      await component.onSubmit();
+
+      expect(storageServiceSpy.uploadFile).toHaveBeenCalledWith(file, 'receipts');
+      expect(orderServiceSpy.createOrder).toHaveBeenCalled();
+      const createdOrderArg = orderServiceSpy.createOrder.calls.mostRecent().args[0];
+      expect(createdOrderArg.subtotal).toBe(3000);
+      expect(createdOrderArg.discountPercentage).toBe(10);
+      expect(createdOrderArg.discountAmount).toBe(300);
+      expect(createdOrderArg.total).toBe(2700);
+      expect(createdOrderArg.paymentMethod).toBe('transfer');
+      expect(createdOrderArg.receiptUrl).toBe('https://storage.example.com/receipt.png');
+      expect(navigateSpy).toHaveBeenCalledWith(['/order-confirmation', 'order-999'], {
+        queryParams: { status: 'approved', method: 'transfer' },
+      });
+    });
+
+    it('should handle bankTransfer with discountPercentage 0 and revert to mercadopago when bankTransfer is disabled', () => {
+      mockStoreConfigSignal.set({
+        ...mockConfig,
+        paymentMethods: {
+          bankTransfer: {
+            enabled: true,
+            discountPercentage: 0,
+          },
+        },
+      });
+      fixture.detectChanges();
+      TestBed.flushEffects();
+
+      expect(component.selectedPaymentMethod()).toBe('transfer');
+      expect(component.hasTransferDiscount()).toBeFalse();
+      expect(component.transferDiscountPercentage()).toBe(0);
+      expect(component.transferSavingsAmount()).toBe(0);
+      expect(component.discountAmount()).toBe(0);
+
+      // Now disable bankTransfer in config -> effect should revert to mercadopago
+      mockStoreConfigSignal.set({
+        ...mockConfig,
+        paymentMethods: {
+          bankTransfer: {
+            enabled: false,
+            discountPercentage: 10,
+          },
+        },
+      });
+      fixture.detectChanges();
+      TestBed.flushEffects();
+
+      expect(component.selectedPaymentMethod()).toBe('mercadopago');
+      expect(component.isBankTransferEnabled()).toBeFalse();
+    });
+
+    it('should handle copyAlias edge cases (empty alias and clipboard error)', async () => {
+      await component.copyAlias('   ');
+      expect(component.aliasCopied()).toBeFalse();
+
+      await component.copyAlias(undefined);
+      expect(component.aliasCopied()).toBeFalse();
+
+      if (navigator.clipboard) {
+        const warnSpy = spyOn(console, 'warn');
+        spyOn(navigator.clipboard, 'writeText').and.returnValue(
+          Promise.reject(new Error('Clipboard denied')),
+        );
+        await component.copyAlias('alias.valido');
+        expect(warnSpy).toHaveBeenCalled();
+      }
+    });
+
+    it('should handle receipt file validation failure, empty file input, and removeReceiptFile', () => {
+      // Empty files
+      component.onReceiptFileSelected({ target: { files: [] } } as unknown as Event);
+      expect(component.receiptFile()).toBeNull();
+
+      // Invalid receipt file
+      const badFile = new File(['bad'], 'bad.exe', { type: 'application/x-msdownload' });
+      imageValidationServiceSpy.validateReceiptImage.and.returnValue({
+        valid: false,
+        errors: ['Formato inválido.'],
+      });
+      const mockInput = { files: [badFile], value: 'bad.exe' };
+      component.onReceiptFileSelected({ target: mockInput } as unknown as Event);
+
+      expect(component.receiptError()).toBe('Formato inválido.');
+      expect(component.receiptFile()).toBeNull();
+      expect(sweetAlertServiceSpy.error).toHaveBeenCalledWith(
+        'Comprobante inválido',
+        'Formato inválido.',
+      );
+      expect(mockInput.value).toBe('');
+
+      // Remove receipt file
+      component.removeReceiptFile();
+      expect(component.receiptFile()).toBeNull();
+      expect(component.receiptPreviewUrl()).toBeNull();
+      expect(component.receiptError()).toBeNull();
     });
   });
 });

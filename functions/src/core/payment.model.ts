@@ -19,6 +19,8 @@ export const PaymentRequestSchema = z.object({
   // Proyecto del shard donde viven los datos de la tienda (orden/catálogo).
   projectId: z.string().optional(),
   siteUrl: z.string().optional(),
+  paymentMethod: z.enum(['mercadopago', 'transfer']).optional(),
+  receiptUrl: z.string().optional(),
   payer: PayerSchema.optional(),
   items: z
     .array(
