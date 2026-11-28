@@ -68,4 +68,145 @@ describe('PaymentService', () => {
     );
     expect(mockFn).toHaveBeenCalledTimes(3); // Initial + 2 retries
   });
+
+  describe('initiatePayment', () => {
+    const mockItems = [
+      {
+        id: '1',
+        productId: 'p1',
+        variantId: 'v1',
+        name: 'Producto 1',
+        price: 1000,
+        unitPrice: 1000,
+        quantity: 2,
+        image: '',
+        attributes: {},
+        stock: 5,
+      },
+    ];
+
+    it('should return success and init_point when fetch succeeds', async () => {
+      spyOn(window, 'fetch').and.returnValue(
+        Promise.resolve(
+          new Response(JSON.stringify({ result: { init_point: 'https://mp.com/checkout/123' } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ),
+      );
+
+      const res = await service.initiatePayment(mockItems, 'ORD-1', {
+        firstName: 'Juan',
+        email: 'juan@test.com',
+      });
+
+      expect(res.success).toBeTrue();
+      expect(res.init_point).toBe('https://mp.com/checkout/123');
+    });
+
+    it('should return error message when fetch returns non-ok response with error body', async () => {
+      spyOn(console, 'error');
+      const privateService = service as unknown as {
+        retryWithBackoff: <T>(fn: () => Promise<T>) => Promise<T>;
+      };
+      spyOn(privateService, 'retryWithBackoff').and.callFake((fn) => fn());
+      spyOn(window, 'fetch').and.returnValue(
+        Promise.resolve(
+          new Response(JSON.stringify({ error: { message: 'Stock insuficiente' } }), {
+            status: 400,
+          }),
+        ),
+      );
+
+      const res = await service.initiatePayment(mockItems, 'ORD-1');
+
+      expect(res.success).toBeFalse();
+      expect(res.error).toBe('Stock insuficiente');
+    });
+
+    it('should fallback to HTTP status when non-ok response has invalid JSON', async () => {
+      spyOn(console, 'error');
+      const privateService = service as unknown as {
+        retryWithBackoff: <T>(fn: () => Promise<T>) => Promise<T>;
+      };
+      spyOn(privateService, 'retryWithBackoff').and.callFake((fn) => fn());
+      spyOn(window, 'fetch').and.returnValue(
+        Promise.resolve(new Response('Internal Error', { status: 500 })),
+      );
+
+      const res = await service.initiatePayment(mockItems, 'ORD-1');
+
+      expect(res.success).toBeFalse();
+      expect(res.error).toBe('HTTP 500');
+    });
+  });
+
+  describe('confirmBankTransferOrder', () => {
+    const mockItems = [
+      {
+        id: '1',
+        productId: 'p1',
+        variantId: 'v1',
+        name: 'Producto 1',
+        price: 1000,
+        unitPrice: 1000,
+        quantity: 1,
+        image: '',
+        attributes: {},
+        stock: 5,
+      },
+    ];
+
+    it('should return success and total when confirmBankTransferOrder succeeds', async () => {
+      spyOn(window, 'fetch').and.returnValue(
+        Promise.resolve(
+          new Response(JSON.stringify({ result: { total: 900 } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ),
+      );
+
+      const res = await service.confirmBankTransferOrder(
+        'ORD-1',
+        mockItems,
+        'https://example.com/receipt.png',
+      );
+
+      expect(res.success).toBeTrue();
+      expect(res.total).toBe(900);
+    });
+
+    it('should return error when confirmBankTransferOrder returns non-ok status', async () => {
+      spyOn(window, 'fetch').and.returnValue(
+        Promise.resolve(
+          new Response(JSON.stringify({ error: { message: 'Orden inválida' } }), { status: 400 }),
+        ),
+      );
+
+      const res = await service.confirmBankTransferOrder('ORD-1', mockItems);
+
+      expect(res.success).toBeFalse();
+      expect(res.error).toBe('Orden inválida');
+    });
+
+    it('should fallback to HTTP status when confirmBankTransferOrder returns non-JSON error', async () => {
+      spyOn(window, 'fetch').and.returnValue(
+        Promise.resolve(new Response('Bad Gateway', { status: 502 })),
+      );
+
+      const res = await service.confirmBankTransferOrder('ORD-1', mockItems);
+
+      expect(res.success).toBeFalse();
+      expect(res.error).toBe('HTTP 502');
+    });
+
+    it('should gracefully return success: true when fetch throws network error', async () => {
+      spyOn(window, 'fetch').and.returnValue(Promise.reject(new Error('Network offline')));
+
+      const res = await service.confirmBankTransferOrder('ORD-1', mockItems);
+
+      expect(res.success).toBeTrue();
+    });
+  });
 });

@@ -11,5 +11,8 @@ import type { CartItem } from '@core/models/cart.model';
 })
 export class OrderSummary {
   @Input() items: CartItem[] = [];
+  @Input() subtotal?: number;
+  @Input() discountPercentage: number = 0;
+  @Input() discountAmount: number = 0;
   @Input() total: number = 0;
 }

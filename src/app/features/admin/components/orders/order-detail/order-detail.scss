@@ -241,12 +241,61 @@
     background: transparent;
   }
 
+  .text-discount {
+    color: #34d399 !important;
+  }
+
   .total-row {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 
     td {
       padding-top: 1.25rem;
       margin-top: 0.5rem;
+    }
+  }
+}
+
+.badge-transfer {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7 !important;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.badge-receipt-action {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &--attached {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.45);
+
+    &:hover {
+      background: rgba(59, 130, 246, 0.32);
+      color: #ffffff;
+    }
+  }
+
+  &--missing {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fcd34d;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+
+    &:hover {
+      background: rgba(245, 158, 11, 0.3);
+      color: #ffffff;
     }
   }
 }

@@ -108,6 +108,29 @@ export class ImageValidationService {
   }
 
   /**
+   * Valida la imagen de un comprobante de pago (formato y peso máximo, sin restricción 16:9)
+   * @param file Archivo de imagen a validar
+   */
+  validateReceiptImage(file: File): ImageValidationResult {
+    const errors: string[] = [];
+
+    if (!this.ALLOWED_MIME_TYPES.includes(file.type)) {
+      errors.push(`Formato no permitido: ${file.type || 'desconocido'}. Usá JPG, PNG o WebP.`);
+    }
+
+    if (file.size > this.MAX_FILE_SIZE) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      errors.push(`El archivo es muy grande (${sizeMB}MB). Máximo permitido: 5MB.`);
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      fileSize: file.size,
+    };
+  }
+
+  /**
    * Obtiene recomendaciones para mejorar la calidad de imagen
    */
   getQualityRecommendations(): {
